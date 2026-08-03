@@ -10,4 +10,4 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /pb
 COPY --from=downloader /pb/pocketbase /pb/pocketbase
 EXPOSE 8090
-CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data", "--migrationsDir=/pb/pb_migrations"]
+CMD ["/bin/sh", "-c", "/pb/pocketbase superuser upsert admin@admin.com Secret123. --dir=/pb/pb_data && exec /pb/pocketbase serve --http=0.0.0.0:8090 --dir=/pb/pb_data --migrationsDir=/pb/pb_migrations"]
