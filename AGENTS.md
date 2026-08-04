@@ -20,7 +20,8 @@
 - `src/main.tsx` mounts the React app and wraps it in `NetworkProvider`; `src/App.tsx` composes the page.
 - PocketBase access is centralized in `src/lib/pocketbase.ts`; do not create additional SDK instances in components.
 - Dexie in `src/lib/database.ts` is the source of truth for local bookmarks; local edits must work offline.
-- `src/lib/sync.ts` contains the explicit force pull/push PocketBase synchronization.
+- Dexie categories are local-first too; `src/components/Sidebar.tsx` owns category creation and filtering.
+- `src/lib/sync.ts` contains the explicit force pull/push PocketBase synchronization for bookmarks and categories.
 - `NetworkContext` uses browser online/offline events to disable remote sync controls only.
 - The PWA service worker is generated only by `npm run build`; `npm run dev` is not an offline/PWA test environment.
 - To test offline PWA behavior, build and run `npm run preview`, visit the app online until the service worker activates, then disconnect and reload.

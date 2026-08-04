@@ -1,14 +1,16 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalBookmark, LocalProfile } from '../types/bookmark';
+import type { LocalBookmark, LocalCategory, LocalProfile } from '../types/bookmark';
 
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;
+  categories!: Table<LocalCategory, string>;
   profiles!: Table<LocalProfile, string>;
 
   constructor() {
     super('bookmarks-offline');
     this.version(1).stores({
       bookmarks: 'id, remoteId, updatedAt, order',
+      categories: 'id, name, createdAt',
       profiles: 'id',
     });
   }

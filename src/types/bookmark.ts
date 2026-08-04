@@ -5,7 +5,14 @@ export interface LocalBookmark {
   link: string;
   favicon?: string;
   order: number;
+  categoryIds?: string[];
   updatedAt: string;
+}
+
+export interface LocalCategory {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export interface LocalProfile {

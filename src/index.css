@@ -48,10 +48,48 @@ input {
   font-size: 0.875rem;
 }
 
-.grid-layout {
+.app-layout {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
+  grid-template-columns: 14rem 1fr;
   gap: 2rem;
+}
+
+.sidebar {
+  align-self: start;
+}
+
+.sidebar-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.category-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.category-option {
+  padding: 0.5rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.category-option.selected {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.category-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.category-form input {
+  min-width: 0;
+  padding: 0.5rem;
 }
 
 .card {
@@ -165,7 +203,7 @@ input {
     flex-direction: column;
   }
 
-  .grid-layout {
+  .app-layout {
     grid-template-columns: 1fr;
   }
 }

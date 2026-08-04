@@ -2,14 +2,16 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { LocalBookmark } from '../types/bookmark';
 import { createId, db } from '../lib/database';
 
-const BookmarkList = ({ refreshKey }: { refreshKey: number }) => {
+const BookmarkList = ({ refreshKey, categoryId }: { refreshKey: number; categoryId: string | null }) => {
   const [bookmarks, setBookmarks] = useState<LocalBookmark[]>([]);
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
 
   useEffect(() => {
-    db.bookmarks.orderBy('order').toArray().then(setBookmarks);
-  }, [refreshKey]);
+    db.bookmarks.orderBy('order').toArray().then((items) => {
+      setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
+    });
+  }, [categoryId, refreshKey]);
 
   const addBookmark = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -18,12 +20,14 @@ const BookmarkList = ({ refreshKey }: { refreshKey: number }) => {
     await db.bookmarks.add({ id: createId(), title: title.trim(), link: link.trim(), order: bookmarks.length + 1, updatedAt: now });
     setTitle('');
     setLink('');
-    setBookmarks(await db.bookmarks.orderBy('order').toArray());
+    const items = await db.bookmarks.orderBy('order').toArray();
+    setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
   };
 
   const removeBookmark = async (id: string) => {
     await db.bookmarks.delete(id);
-    setBookmarks(await db.bookmarks.orderBy('order').toArray());
+    const items = await db.bookmarks.orderBy('order').toArray();
+    setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
   };
 
   return (

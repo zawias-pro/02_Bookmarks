@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { AuthForm } from './components/AuthForm';
 import { BookmarkList } from './components/BookmarkList';
+import { Sidebar } from './components/Sidebar';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { pullBookmarks, pushBookmarks } from './lib/sync';
 import { seedBookmarks } from './lib/database';
@@ -13,16 +14,18 @@ const App = () => {
   const [authVisible, setAuthVisible] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(() => pb.authStore.isValid);
   const [syncMessage, setSyncMessage] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
   const { isOnline } = useNetworkStatus();
 
   useEffect(() => {
     void seedBookmarks().then(() => setRefreshKey((key) => key + 1));
   }, []);
 
-  const sync = async (action: () => Promise<number>, verb: string) => {
+  const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
     try {
-      const count = await action();
-      setSyncMessage(`${verb} ${count} bookmarks`);
+      const counts = await action();
+      setSyncMessage(`${verb} ${counts.bookmarks} bookmarks, ${counts.categories} categories`);
       setRefreshKey((key) => key + 1);
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : 'Sync failed.');
@@ -40,7 +43,14 @@ const App = () => {
         syncMessage={syncMessage}
       />
 
-      <main className="grid-layout">
+      <main className="app-layout">
+        <Sidebar
+          selectedCategoryId={categoryId}
+          refreshKey={categoryRefreshKey}
+          onSelect={setCategoryId}
+          onChange={() => setCategoryRefreshKey((key) => key + 1)}
+        />
+        <section className="content-area">
         {authVisible && (
           <AuthForm
             key={authKey}
@@ -52,7 +62,8 @@ const App = () => {
             }}
           />
         )}
-        <BookmarkList refreshKey={refreshKey} />
+          <BookmarkList refreshKey={refreshKey} categoryId={categoryId} />
+        </section>
       </main>
 
     </div>
