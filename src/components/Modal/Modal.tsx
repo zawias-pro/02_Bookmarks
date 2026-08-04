@@ -4,11 +4,13 @@ import styles from './Modal.module.css'
 
 const Modal = ({ titleId, onClose, children }: { titleId: string; onClose: () => void; children: ReactNode }) => {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     const previousActiveElement = document.activeElement as HTMLElement | null
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
 
     document.body.style.overflow = 'hidden'
@@ -20,7 +22,7 @@ const Modal = ({ titleId, onClose, children }: { titleId: string; onClose: () =>
       document.removeEventListener('keydown', handleKeyDown)
       previousActiveElement?.focus()
     }
-  }, [onClose])
+  }, [])
 
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose()
