@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { createId, db } from '../persistence/database'
+import { createId, db } from '../persistence/database.ts'
 
 const AddCategoryForm = () => {
   const [name, setName] = useState('')

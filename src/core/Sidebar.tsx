@@ -1,6 +1,6 @@
-import { AddCategoryForm } from './AddCategoryForm.tsx'
-import { CategoriesList } from './CategoriesList.tsx'
-import { SyncControls } from './SyncControls.tsx'
+import { AddCategoryForm } from '../categories/AddCategoryForm.tsx'
+import { CategoriesList } from '../categories/CategoriesList.tsx'
+import { SyncControls } from '../sync/SyncControls.tsx'
 
 const Sidebar = ({ syncEnabled }: { syncEnabled: boolean }) => {
   return (

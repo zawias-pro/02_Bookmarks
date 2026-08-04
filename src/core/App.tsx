@@ -1,6 +1,6 @@
 import { AuthForm } from '../auth/AuthForm.tsx';
 import { BookmarkList } from '../bookmarks/BookmarkList.tsx';
-import { Sidebar } from '../components/Sidebar.tsx';
+import { Sidebar } from './Sidebar.tsx';
 import { pb } from '../persistence/pocketbase.ts';
 import { useAppStore } from '../store/appStore.ts';
 import styles from './App.module.css'

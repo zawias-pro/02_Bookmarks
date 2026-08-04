@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { LocalBookmark } from './bookmark.ts';
+import type { LocalBookmark } from '../model/model.ts';
 import { createId, db } from '../persistence/database.ts';
 import { useAppStore } from '../store/appStore.ts';
 

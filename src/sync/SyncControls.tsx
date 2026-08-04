@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { pullBookmarks, pushBookmarks } from '../sync/sync.ts'
+import { pullBookmarks, pushBookmarks } from './sync.ts'
 import { useAppStore } from '../store/appStore.ts'
 
 const SyncControls = ({ syncEnabled }: { syncEnabled: boolean }) => {

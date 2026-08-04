@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../persistence/database'
+import { db } from '../persistence/database.ts'
 import { useAppStore } from '../store/appStore.ts'
 
 const CategoriesList = () => {
