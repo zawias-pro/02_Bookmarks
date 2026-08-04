@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createId, db } from '../persistence/database';
 import type { LocalCategory } from '../bookmarks/bookmark.ts';
-import { useNetworkStatus } from "../pwa/useNetworkStatus.ts";
 import { pullBookmarks, pushBookmarks } from "../sync/sync.ts";
 import { useAppStore } from '../store/appStore.ts';
 
@@ -14,7 +13,6 @@ const Sidebar = ({
   const [name, setName] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [syncMessage, setSyncMessage] = useState('');
-  const { isOnline } = useNetworkStatus();
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
   const selectedCategoryId = useAppStore((state) => state.selectedCategoryId);
   const setSelectedCategoryId = useAppStore((state) => state.setSelectedCategoryId);
@@ -55,16 +53,11 @@ const Sidebar = ({
             <button type="button" onClick={() => setAuthFormOpen(true)}>
               {syncEnabled ? 'Sync enabled' : 'Enable sync'}
             </button>
-            {!isOnline && (
-              <span className="badge badge-danger">
-            Offline
-          </span>
-            )}
             <button type="button" onClick={() => void sync(pullBookmarks, 'Pulled')}
-                    disabled={!isOnline || !syncEnabled}>Force pull
+                    disabled={!syncEnabled}>Force pull
             </button>
             <button type="button" onClick={() => void sync(pushBookmarks, 'Pushed')}
-                    disabled={!isOnline || !syncEnabled}>Force push
+                    disabled={!syncEnabled}>Force push
             </button>
             {syncMessage && <span className="badge">{syncMessage}</span>}
           </div>
