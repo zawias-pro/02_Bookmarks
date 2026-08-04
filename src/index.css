@@ -97,6 +97,12 @@ header.navbar {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 .dot {
   width: 8px;
   height: 8px;
@@ -270,6 +276,17 @@ header.navbar {
 .schema-table th {
   color: var(--text-secondary);
   font-weight: 600;
+}
+
+.offline-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
 .code-badge {

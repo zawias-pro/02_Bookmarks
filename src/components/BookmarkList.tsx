@@ -1,7 +1,10 @@
 import React from 'react';
 import type { BookmarkRecord } from '../types/pocketbase';
 
-// Initial dummy scaffold records matching PocketBase schema fields
+interface BookmarkListProps {
+  readOnly: boolean;
+}
+
 const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
   {
     id: 'rec_sample_01',
@@ -41,10 +44,15 @@ const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
   },
 ];
 
-export const BookmarkList: React.FC = () => {
+export const BookmarkList: React.FC<BookmarkListProps> = ({ readOnly }) => {
   return (
     <div className="card">
       <h2 className="card-title">🔖 Bookmarks Collection Scaffold</h2>
+      {readOnly && (
+        <div className="offline-banner">
+          Offline &mdash; bookmarks are read-only
+        </div>
+      )}
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
         Sample rendering of records conforming to the PocketBase schema.
       </p>
