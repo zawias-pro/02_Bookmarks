@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookmarkList } from '../components/BookmarkList.tsx';
+import { BookmarkList } from '../bookmarks/BookmarkList.tsx';
 import { Sidebar } from '../components/Sidebar.tsx';
 import styles from './App.module.css'
 

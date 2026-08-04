@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalBookmark, LocalCategory, LocalProfile } from '../types/bookmark';
+import type { LocalBookmark, LocalCategory, LocalProfile } from '../bookmarks/bookmark.ts';
 
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;

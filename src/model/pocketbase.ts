@@ -16,11 +16,3 @@ export interface BookmarkRecord extends RecordModel {
   order: number;
   user: string;
 }
-
-export type AuthProvider = 'password';
-
-export interface AuthState {
-  isValid: boolean;
-  user: UserRecord | null;
-  token: string | null;
-}

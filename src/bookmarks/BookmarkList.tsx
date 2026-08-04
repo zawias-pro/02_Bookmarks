@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { LocalBookmark } from '../types/bookmark';
-import { createId, db } from '../lib/database';
+import type { LocalBookmark } from './bookmark.ts';
+import { createId, db } from '../persistence/database.ts';
 
 const BookmarkList = ({
   categoryId

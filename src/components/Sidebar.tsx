@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { createId, db, seedBookmarks } from '../lib/database';
-import type { LocalCategory } from '../types/bookmark';
-import { useNetworkStatus } from "../hooks/useNetworkStatus.ts";
-import { pullBookmarks, pushBookmarks } from "../lib/sync.ts";
-import { pb } from "../lib/pocketbase.ts";
-import { AuthForm } from "./AuthForm.tsx";
+import { createId, db, seedBookmarks } from '../persistence/database';
+import type { LocalCategory } from '../bookmarks/bookmark.ts';
+import { useNetworkStatus } from "../pwa/useNetworkStatus.ts";
+import { pullBookmarks, pushBookmarks } from "../sync/sync.ts";
+import { pb } from "../persistence/pocketbase.ts";
+import { AuthForm } from "../auth/AuthForm.tsx";
 
 const Sidebar = ({
   selectedCategoryId,

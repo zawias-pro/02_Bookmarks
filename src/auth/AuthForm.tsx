@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { pb } from '../lib/pocketbase';
+import { pb } from '../persistence/pocketbase.ts';
 
 const AuthForm = ({ onAuthChange, onClose }: { onAuthChange: () => void; onClose: () => void }) => {
   const [isLogin, setIsLogin] = useState(true);

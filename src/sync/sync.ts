@@ -1,7 +1,7 @@
 import type { RecordModel } from 'pocketbase';
-import { db } from './database';
-import { pb } from './pocketbase';
-import type { LocalBookmark, LocalCategory } from '../types/bookmark';
+import { db } from '../persistence/database.ts';
+import { pb } from '../persistence/pocketbase.ts';
+import type { LocalBookmark, LocalCategory } from '../bookmarks/bookmark.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name'>;
 type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { categories?: string[] };

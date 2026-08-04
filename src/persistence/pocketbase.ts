@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-import type { BookmarkRecord, UserRecord } from '../types/pocketbase';
+import type { BookmarkRecord, UserRecord } from '../model/pocketbase.ts';
 
 const POCKETBASE_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
@@ -12,16 +12,4 @@ const collections = {
   users: () => pb.collection<UserRecord>('users'),
 };
 
-/**
- * Check PocketBase health / connectivity status
- */
-const checkPocketBaseHealth = async (): Promise<boolean> => {
-  try {
-    const health = await pb.health.check();
-    return health.code === 200;
-  } catch {
-    return false;
-  }
-}
-
-export { POCKETBASE_URL, pb, collections, checkPocketBaseHealth };
+export { POCKETBASE_URL, pb, collections };
