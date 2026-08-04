@@ -2,7 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { LocalBookmark } from '../types/bookmark';
 import { createId, db } from '../lib/database';
 
-const BookmarkList = ({ refreshKey, categoryId }: { refreshKey: number; categoryId: string | null }) => {
+const BookmarkList = ({
+  categoryId
+}: {
+  categoryId: string | null
+}) => {
   const [bookmarks, setBookmarks] = useState<LocalBookmark[]>([]);
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
@@ -11,7 +15,7 @@ const BookmarkList = ({ refreshKey, categoryId }: { refreshKey: number; category
     db.bookmarks.orderBy('order').toArray().then((items) => {
       setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
     });
-  }, [categoryId, refreshKey]);
+  }, [categoryId]);
 
   const addBookmark = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
