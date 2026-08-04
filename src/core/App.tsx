@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Navbar } from './components/Navbar';
-import { AuthForm } from './components/AuthForm';
-import { BookmarkList } from './components/BookmarkList';
-import { Sidebar } from './components/Sidebar';
-import { useNetworkStatus } from './hooks/useNetworkStatus';
-import { pullBookmarks, pushBookmarks } from './lib/sync';
-import { seedBookmarks } from './lib/database';
-import { pb } from './lib/pocketbase';
+import { Navbar } from '../components/Navbar.tsx';
+import { AuthForm } from '../components/AuthForm.tsx';
+import { BookmarkList } from '../components/BookmarkList.tsx';
+import { Sidebar } from '../components/Sidebar.tsx';
+import { useNetworkStatus } from '../hooks/useNetworkStatus.ts';
+import { pullBookmarks, pushBookmarks } from '../lib/sync.ts';
+import { seedBookmarks } from '../lib/database.ts';
+import { pb } from '../lib/pocketbase.ts';
+import styles from './App.module.css'
 
 const App = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -33,24 +34,24 @@ const App = () => {
   };
 
   return (
-    <div className="app-container">
-      <Navbar
-        isOnline={isOnline}
-        syncEnabled={syncEnabled}
-        onSyncAccountClick={() => setAuthVisible(true)}
-        onPull={() => void sync(pullBookmarks, 'Pulled')}
-        onPush={() => void sync(pushBookmarks, 'Pushed')}
-        syncMessage={syncMessage}
-      />
-
-      <main className="app-layout">
+    <div className={styles.app}>
+      <div className={styles.sidebar}>
+        <Navbar
+          isOnline={isOnline}
+          syncEnabled={syncEnabled}
+          onSyncAccountClick={() => setAuthVisible(true)}
+          onPull={() => void sync(pullBookmarks, 'Pulled')}
+          onPush={() => void sync(pushBookmarks, 'Pushed')}
+          syncMessage={syncMessage}
+        />
         <Sidebar
           selectedCategoryId={categoryId}
           refreshKey={categoryRefreshKey}
           onSelect={setCategoryId}
           onChange={() => setCategoryRefreshKey((key) => key + 1)}
         />
-        <section className="content-area">
+      </div>
+      <main className={styles.main}>
         {authVisible && (
           <AuthForm
             key={authKey}
@@ -62,10 +63,8 @@ const App = () => {
             }}
           />
         )}
-          <BookmarkList refreshKey={refreshKey} categoryId={categoryId} />
-        </section>
+        <BookmarkList refreshKey={refreshKey} categoryId={categoryId}/>
       </main>
-
     </div>
   );
 }
