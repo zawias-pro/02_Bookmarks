@@ -1,9 +1,4 @@
-import React from 'react';
 import type { BookmarkRecord } from '../types/pocketbase';
-
-interface BookmarkListProps {
-  readOnly: boolean;
-}
 
 const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
   {
@@ -44,7 +39,7 @@ const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
   },
 ];
 
-export const BookmarkList: React.FC<BookmarkListProps> = ({ readOnly }) => {
+const BookmarkList = ({ readOnly }: { readOnly: boolean }) => {
   return (
     <div className="card">
       <h2 className="card-title">Bookmarks Collection Scaffold</h2>
@@ -83,3 +78,5 @@ export const BookmarkList: React.FC<BookmarkListProps> = ({ readOnly }) => {
     </div>
   );
 };
+
+export { BookmarkList };

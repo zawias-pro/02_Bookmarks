@@ -4,9 +4,9 @@ export interface NetworkState {
   isOnline: boolean
 }
 
-export const NetworkContext = createContext<NetworkState>({ isOnline: true })
+const NetworkContext = createContext<NetworkState>({ isOnline: true })
 
-export function NetworkProvider({ children }: { children: ReactNode }) {
+const NetworkProvider = ({ children }: { children: ReactNode }) => {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
 
   useEffect(() => {
@@ -28,3 +28,5 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     </NetworkContext.Provider>
   )
 }
+
+export { NetworkContext, NetworkProvider }

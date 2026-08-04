@@ -1,11 +1,4 @@
-import React from 'react';
-
-interface NavbarProps {
-  pbConnected: boolean;
-  isOnline: boolean;
-}
-
-export const Navbar: React.FC<NavbarProps> = ({ pbConnected, isOnline }) => {
+const Navbar = ({ pbConnected, isOnline }: { pbConnected: boolean; isOnline: boolean }) => {
   return (
     <header className="navbar">
       <div className="brand">
@@ -33,3 +26,5 @@ export const Navbar: React.FC<NavbarProps> = ({ pbConnected, isOnline }) => {
     </header>
   );
 };
+
+export { Navbar };

@@ -1,10 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-interface AuthFormProps {
-  readOnly: boolean;
-}
-
-export const AuthForm: React.FC<AuthFormProps> = ({ readOnly }) => {
+const AuthForm = ({ readOnly }: { readOnly: boolean }) => {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
@@ -64,3 +60,5 @@ export const AuthForm: React.FC<AuthFormProps> = ({ readOnly }) => {
     </div>
   );
 };
+
+export { AuthForm };

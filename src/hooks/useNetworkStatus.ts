@@ -1,6 +1,8 @@
 import { useContext } from 'react'
 import { NetworkContext } from '../context/NetworkContext'
 
-export function useNetworkStatus() {
+const useNetworkStatus = () => {
   return useContext(NetworkContext)
 }
+
+export { useNetworkStatus }

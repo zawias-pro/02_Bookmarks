@@ -5,7 +5,7 @@ import { BookmarkList } from './components/BookmarkList';
 import { checkPocketBaseHealth } from './lib/pocketbase';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 
-export function App() {
+const App = () => {
   const [pbConnected, setPbConnected] = useState<boolean>(false);
   const { isOnline } = useNetworkStatus();
 
@@ -30,4 +30,4 @@ export function App() {
   );
 }
 
-export default App;
+export { App };
