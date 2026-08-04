@@ -1,23 +1,51 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { pb } from '../lib/pocketbase';
 
-const AuthForm = ({ readOnly }: { readOnly: boolean }) => {
+const AuthForm = ({ onAuthChange }: { onAuthChange: () => void }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [identity, setIdentity] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+    try {
+      if (isLogin) {
+        await pb.collection('users').authWithPassword(identity, password);
+      } else {
+        await pb.collection('users').create({ email: identity, password, passwordConfirm: password });
+        await pb.collection('users').authWithPassword(identity, password);
+      }
+      setPassword('');
+      onAuthChange();
+    } catch {
+      setMessage('PocketBase authentication failed. Local bookmarks remain available.');
+    }
+  };
+
+  if (pb.authStore.isValid) {
+    return (
+      <div className="card">
+        <h2 className="card-title">PocketBase Account</h2>
+        <p>Signed in as {pb.authStore.record?.email || pb.authStore.record?.username}.</p>
+        <button type="button" onClick={() => { pb.authStore.clear(); onAuthChange(); }}>
+          Sign out
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="card">
       <h2 className="card-title">
-        Default Auth Scaffold ({isLogin ? 'Login' : 'Sign Up'})
+        PocketBase Sync Account ({isLogin ? 'Login' : 'Sign Up'})
       </h2>
-      {readOnly && (
-        <div className="offline-banner">
-          Offline &mdash; authentication is read-only
-        </div>
-      )}
       <p>
-        PocketBase password authentication provider scaffold.
+        Authentication is optional. Your bookmarks are stored locally first.
       </p>
 
-      <form onSubmit={(e) => e.preventDefault()}>
+      <form onSubmit={submit}>
         <div className="form-group">
           <label className="form-label" htmlFor="identity">Email or Username</label>
           <input
@@ -25,7 +53,8 @@ const AuthForm = ({ readOnly }: { readOnly: boolean }) => {
             type="text"
             className="form-input"
             placeholder="user@example.com"
-            disabled
+            value={identity}
+            onChange={(event) => setIdentity(event.target.value)}
           />
         </div>
 
@@ -36,25 +65,27 @@ const AuthForm = ({ readOnly }: { readOnly: boolean }) => {
             type="password"
             className="form-input"
             placeholder="••••••••"
-            disabled
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
           />
         </div>
 
         <button
-          type="button"
+          type="submit"
           className="btn btn-primary"
-          disabled={readOnly}
         >
-          {readOnly ? 'Unavailable Offline' : `${isLogin ? 'Sign In' : 'Create Account'} (Scaffold)`}
+          {`${isLogin ? 'Sign In' : 'Create Account'} for Sync`}
         </button>
       </form>
+
+      {message && <p role="alert">{message}</p>}
 
       <div>
         <button
           type="button"
-          onClick={() => setIsLogin(!isLogin)}
+          onClick={() => setIsLogin((current) => !current)}
         >
-          {isLogin ? "Need an account? Toggle Sign Up scaffold" : "Have an account? Toggle Login scaffold"}
+          {isLogin ? 'Need an account? Create one' : 'Have an account? Sign in'}
         </button>
       </div>
     </div>

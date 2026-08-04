@@ -1,4 +1,4 @@
-const Navbar = ({ pbConnected, isOnline }: { pbConnected: boolean; isOnline: boolean }) => {
+const Navbar = ({ isOnline, onPull, onPush, syncMessage }: { isOnline: boolean; onPull: () => void; onPush: () => void; syncMessage: string }) => {
   return (
     <header className="navbar">
       <div className="brand">
@@ -13,15 +13,9 @@ const Navbar = ({ pbConnected, isOnline }: { pbConnected: boolean; isOnline: boo
             Offline
           </span>
         )}
-        {pbConnected ? (
-          <span className="badge badge-success">
-            PocketBase Connected
-          </span>
-        ) : (
-          <span className="badge badge-warning">
-            PocketBase Offline
-          </span>
-        )}
+        <button type="button" onClick={onPull} disabled={!isOnline}>Force pull</button>
+        <button type="button" onClick={onPush} disabled={!isOnline}>Force push</button>
+        {syncMessage && <span className="badge">{syncMessage}</span>}
       </div>
     </header>
   );

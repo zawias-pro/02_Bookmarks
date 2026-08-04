@@ -7,6 +7,7 @@
 - Run verification with `npm run lint && npm run build`; `build` runs `tsc -b` before `vite build`.
 - Run the production server with `npm run preview`, normally after `npm run build`.
 - Start PocketBase with `docker compose up -d --build`; its API is at `http://127.0.0.1:8090/api`.
+- Run the complete local stack with `docker compose up`; Vite is at `http://localhost:5173` and PocketBase is at `http://localhost:8090`.
 
 ## Runtime Setup
 
@@ -18,7 +19,9 @@
 
 - `src/main.tsx` mounts the React app and wraps it in `NetworkProvider`; `src/App.tsx` composes the page.
 - PocketBase access is centralized in `src/lib/pocketbase.ts`; do not create additional SDK instances in components.
-- `NetworkContext` uses browser online/offline events. Offline state makes the current UI read-only; preserve that behavior for future mutations.
+- Dexie in `src/lib/database.ts` is the source of truth for local bookmarks; local edits must work offline.
+- `src/lib/sync.ts` contains the explicit force pull/push PocketBase synchronization.
+- `NetworkContext` uses browser online/offline events to disable remote sync controls only.
 - The PWA service worker is generated only by `npm run build`; `npm run dev` is not an offline/PWA test environment.
 - To test offline PWA behavior, build and run `npm run preview`, visit the app online until the service worker activates, then disconnect and reload.
 

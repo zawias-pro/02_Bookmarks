@@ -1,64 +1,45 @@
-import type { BookmarkRecord } from '../types/pocketbase';
+import { useEffect, useState, type FormEvent } from 'react';
+import type { LocalBookmark } from '../types/bookmark';
+import { createId, db } from '../lib/database';
 
-const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
-  {
-    id: 'rec_sample_01',
-    created: '2026-08-03T12:00:00Z',
-    updated: '2026-08-03T12:00:00Z',
-    collectionId: 'bookmarks_coll_01',
-    collectionName: 'bookmarks',
-    title: 'PocketBase Documentation',
-    link: 'https://pocketbase.io/docs',
-    favicon: '⚡',
-    order: 1,
-    user: 'user_rec_01',
-  },
-  {
-    id: 'rec_sample_02',
-    created: '2026-08-03T12:05:00Z',
-    updated: '2026-08-03T12:05:00Z',
-    collectionId: 'bookmarks_coll_01',
-    collectionName: 'bookmarks',
-    title: 'React Documentation',
-    link: 'https://react.dev',
-    favicon: '⚛️',
-    order: 2,
-    user: 'user_rec_01',
-  },
-  {
-    id: 'rec_sample_03',
-    created: '2026-08-03T12:10:00Z',
-    updated: '2026-08-03T12:10:00Z',
-    collectionId: 'bookmarks_coll_01',
-    collectionName: 'bookmarks',
-    title: 'Vite Guide',
-    link: 'https://vitejs.dev',
-    favicon: '⚡',
-    order: 3,
-    user: 'user_rec_01',
-  },
-];
+const BookmarkList = ({ refreshKey }: { refreshKey: number }) => {
+  const [bookmarks, setBookmarks] = useState<LocalBookmark[]>([]);
+  const [title, setTitle] = useState('');
+  const [link, setLink] = useState('');
 
-const BookmarkList = ({ readOnly }: { readOnly: boolean }) => {
+  useEffect(() => {
+    db.bookmarks.orderBy('order').toArray().then(setBookmarks);
+  }, [refreshKey]);
+
+  const addBookmark = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!title.trim() || !link.trim()) return;
+    const now = new Date().toISOString();
+    await db.bookmarks.add({ id: createId(), title: title.trim(), link: link.trim(), order: bookmarks.length + 1, updatedAt: now });
+    setTitle('');
+    setLink('');
+    setBookmarks(await db.bookmarks.orderBy('order').toArray());
+  };
+
+  const removeBookmark = async (id: string) => {
+    await db.bookmarks.delete(id);
+    setBookmarks(await db.bookmarks.orderBy('order').toArray());
+  };
+
   return (
     <div className="card">
-      <h2 className="card-title">Bookmarks Collection Scaffold</h2>
-      {readOnly && (
-        <div className="offline-banner">
-          Offline &mdash; bookmarks are read-only
-        </div>
-      )}
-      <p>
-        Sample rendering of records conforming to the PocketBase schema.
-      </p>
+      <h2 className="card-title">Local Bookmarks</h2>
+      <p>Changes are saved to this device immediately, even offline.</p>
+      <form onSubmit={addBookmark} className="add-form">
+        <input aria-label="Bookmark title" placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
+        <input aria-label="Bookmark URL" placeholder="https://example.com" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
+        <button type="submit">Add</button>
+      </form>
 
       <div className="bookmark-list">
-        {SAMPLE_BOOKMARKS.map((bookmark) => (
+        {bookmarks.map((bookmark) => (
           <div className="bookmark-item" key={bookmark.id}>
             <div className="bookmark-info">
-              <div className="favicon-icon">
-                {bookmark.favicon || '🌐'}
-              </div>
               <div className="bookmark-details">
                 <span className="bookmark-title">{bookmark.title}</span>
                 <a
@@ -71,7 +52,7 @@ const BookmarkList = ({ readOnly }: { readOnly: boolean }) => {
                 </a>
               </div>
             </div>
-            <span className="order-tag">Order: #{bookmark.order}</span>
+            <button type="button" onClick={() => void removeBookmark(bookmark.id)}>Delete</button>
           </div>
         ))}
       </div>

@@ -14,7 +14,7 @@ export interface BookmarkRecord extends RecordModel {
   title: string;
   favicon?: string;
   order: number;
-  user: string; // Relation to User Record ID
+  user: string;
 }
 
 export type AuthProvider = 'password';

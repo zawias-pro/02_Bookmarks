@@ -10,3 +10,21 @@ services:
     volumes:
       - ./pb_data:/pb/pb_data
       - ./pb_migrations:/pb/pb_migrations
+
+  vite:
+    image: node:24-alpine
+    container_name: bookmarks-vite
+    working_dir: /app
+    depends_on:
+      - pocketbase
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_POCKETBASE_URL: http://localhost:8090
+    volumes:
+      - .:/app
+      - vite_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  vite_node_modules:
