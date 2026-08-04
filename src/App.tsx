@@ -5,10 +5,13 @@ import { BookmarkList } from './components/BookmarkList';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { pullBookmarks, pushBookmarks } from './lib/sync';
 import { seedBookmarks } from './lib/database';
+import { pb } from './lib/pocketbase';
 
 const App = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [authKey, setAuthKey] = useState(0);
+  const [authVisible, setAuthVisible] = useState(false);
+  const [syncEnabled, setSyncEnabled] = useState(() => pb.authStore.isValid);
   const [syncMessage, setSyncMessage] = useState('');
   const { isOnline } = useNetworkStatus();
 
@@ -30,13 +33,25 @@ const App = () => {
     <div className="app-container">
       <Navbar
         isOnline={isOnline}
+        syncEnabled={syncEnabled}
+        onSyncAccountClick={() => setAuthVisible(true)}
         onPull={() => void sync(pullBookmarks, 'Pulled')}
         onPush={() => void sync(pushBookmarks, 'Pushed')}
         syncMessage={syncMessage}
       />
 
       <main className="grid-layout">
-        <AuthForm key={authKey} onAuthChange={() => { setAuthKey((key) => key + 1); setSyncMessage(''); }} />
+        {authVisible && (
+          <AuthForm
+            key={authKey}
+            onClose={() => setAuthVisible(false)}
+            onAuthChange={() => {
+              setAuthKey((key) => key + 1);
+              setSyncEnabled(pb.authStore.isValid);
+              setSyncMessage('');
+            }}
+          />
+        )}
         <BookmarkList refreshKey={refreshKey} />
       </main>
 

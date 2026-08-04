@@ -1,11 +1,21 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { pb } from '../lib/pocketbase';
 
-const AuthForm = ({ onAuthChange }: { onAuthChange: () => void }) => {
+const AuthForm = ({ onAuthChange, onClose }: { onAuthChange: () => void; onClose: () => void }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -24,21 +34,17 @@ const AuthForm = ({ onAuthChange }: { onAuthChange: () => void }) => {
     }
   };
 
-  if (pb.authStore.isValid) {
-    return (
-      <div className="card">
-        <h2 className="card-title">PocketBase Account</h2>
+  const content = pb.authStore.isValid ? (
+      <div className="modal-card card">
+        <h2 id="auth-title" className="card-title">PocketBase Account</h2>
         <p>Signed in as {pb.authStore.record?.email || pb.authStore.record?.username}.</p>
         <button type="button" onClick={() => { pb.authStore.clear(); onAuthChange(); }}>
           Sign out
         </button>
       </div>
-    );
-  }
-
-  return (
-    <div className="card">
-      <h2 className="card-title">
+    ) : (
+    <div className="modal-card card">
+        <h2 id="auth-title" className="card-title">
         PocketBase Sync Account ({isLogin ? 'Login' : 'Sign Up'})
       </h2>
       <p>
@@ -89,6 +95,16 @@ const AuthForm = ({ onAuthChange }: { onAuthChange: () => void }) => {
         </button>
       </div>
     </div>
+  );
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <button className="modal-close" type="button" aria-label="Close authentication" onClick={onClose}>Close</button>
+        {content}
+      </div>
+    </div>,
+    document.body,
   );
 };
 

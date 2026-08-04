@@ -59,6 +59,32 @@ input {
   border: 1px solid;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.35);
+  z-index: 10;
+}
+
+.modal-backdrop > div {
+  position: relative;
+  width: min(100%, 32rem);
+}
+
+.modal-card {
+  background: white;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+}
+
 .card-title {
   margin: 0 0 1rem;
   font-size: 1.1rem;
