@@ -1,12 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { LocalBookmark } from './bookmark.ts';
 import { createId, db } from '../persistence/database.ts';
+import { useAppStore } from '../store/appStore.ts';
 
-const BookmarkList = ({
-  categoryId
-}: {
-  categoryId: string | null
-}) => {
+const BookmarkList = () => {
+  const categoryId = useAppStore((state) => state.selectedCategoryId);
   const [bookmarks, setBookmarks] = useState<LocalBookmark[]>([]);
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');

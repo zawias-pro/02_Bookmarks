@@ -6,12 +6,8 @@ import { pullBookmarks, pushBookmarks } from "../sync/sync.ts";
 import { useAppStore } from '../store/appStore.ts';
 
 const Sidebar = ({
-  selectedCategoryId,
-  onSelect,
   syncEnabled,
 }: {
-  selectedCategoryId: string | null;
-  onSelect: (categoryId: string | null) => void;
   syncEnabled: boolean;
 }) => {
   const [categories, setCategories] = useState<LocalCategory[]>([]);
@@ -20,6 +16,8 @@ const Sidebar = ({
   const [syncMessage, setSyncMessage] = useState('');
   const { isOnline } = useNetworkStatus();
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
+  const selectedCategoryId = useAppStore((state) => state.selectedCategoryId);
+  const setSelectedCategoryId = useAppStore((state) => state.setSelectedCategoryId);
 
   const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
     try {
@@ -74,12 +72,12 @@ const Sidebar = ({
         <h2 className="sidebar-title">Categories</h2>
         <nav aria-label="Bookmark categories" className="category-list">
           <button className={selectedCategoryId === null ? 'category-option selected' : 'category-option'} type="button"
-                  onClick={() => onSelect(null)}>
+                  onClick={() => setSelectedCategoryId(null)}>
             Any category
           </button>
           {categories.map((category) => (
             <button className={selectedCategoryId === category.id ? 'category-option selected' : 'category-option'}
-                    type="button" key={category.id} onClick={() => onSelect(category.id)}>
+                    type="button" key={category.id} onClick={() => setSelectedCategoryId(category.id)}>
               {category.name}
             </button>
           ))}
