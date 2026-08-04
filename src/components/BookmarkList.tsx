@@ -47,13 +47,13 @@ const SAMPLE_BOOKMARKS: BookmarkRecord[] = [
 export const BookmarkList: React.FC<BookmarkListProps> = ({ readOnly }) => {
   return (
     <div className="card">
-      <h2 className="card-title">🔖 Bookmarks Collection Scaffold</h2>
+      <h2 className="card-title">Bookmarks Collection Scaffold</h2>
       {readOnly && (
         <div className="offline-banner">
           Offline &mdash; bookmarks are read-only
         </div>
       )}
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+      <p>
         Sample rendering of records conforming to the PocketBase schema.
       </p>
 

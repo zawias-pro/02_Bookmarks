@@ -14,19 +14,19 @@ export const Navbar: React.FC<NavbarProps> = ({ pbConnected, isOnline }) => {
           <h1 className="brand-title">Bookmarks Starter</h1>
         </div>
       </div>
-      <div className="badge-container" style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className="badge-container">
         {!isOnline && (
           <span className="badge badge-danger">
-            <span className="dot"></span> Offline
+            Offline
           </span>
         )}
         {pbConnected ? (
           <span className="badge badge-success">
-            <span className="dot"></span> PocketBase Connected
+            PocketBase Connected
           </span>
         ) : (
           <span className="badge badge-warning">
-            <span className="dot"></span> PocketBase Offline
+            PocketBase Offline
           </span>
         )}
       </div>
