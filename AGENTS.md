@@ -11,7 +11,6 @@
 
 ## Runtime Setup
 
-- Copy `.env.dist` to `.env` when needed; `VITE_POCKETBASE_URL` controls the frontend PocketBase URL.
 - `pb_data/` is local PocketBase runtime data and is intentionally ignored; schema changes belong in `pb_migrations/` and `pb_schema.json`.
 - There are no automated tests or CI workflows in this repository; lint and build are the available checks.
 
