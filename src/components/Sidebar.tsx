@@ -1,30 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { createId, db, seedBookmarks } from '../persistence/database';
+import { createId, db } from '../persistence/database';
 import type { LocalCategory } from '../bookmarks/bookmark.ts';
 import { useNetworkStatus } from "../pwa/useNetworkStatus.ts";
 import { pullBookmarks, pushBookmarks } from "../sync/sync.ts";
-import { pb } from "../persistence/pocketbase.ts";
-import { AuthForm } from "../auth/AuthForm.tsx";
+import { useAppStore } from '../store/appStore.ts';
 
 const Sidebar = ({
   selectedCategoryId,
   onSelect,
+  syncEnabled,
 }: {
   selectedCategoryId: string | null;
   onSelect: (categoryId: string | null) => void;
+  syncEnabled: boolean;
 }) => {
   const [categories, setCategories] = useState<LocalCategory[]>([]);
   const [name, setName] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [authKey, setAuthKey] = useState(0);
-  const [authVisible, setAuthVisible] = useState(false);
-  const [syncEnabled, setSyncEnabled] = useState(() => pb.authStore.isValid);
   const [syncMessage, setSyncMessage] = useState('');
   const { isOnline } = useNetworkStatus();
-
-  useEffect(() => {
-    void seedBookmarks().then(() => setRefreshKey((key) => key + 1));
-  }, []);
+  const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
 
   const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
     try {
@@ -46,6 +41,7 @@ const Sidebar = ({
 
     await db.categories.add({ id: createId(), name: trimmedName, createdAt: new Date().toISOString() });
     setName('');
+    setRefreshKey((key) => key + 1);
   };
 
   return (
@@ -58,7 +54,7 @@ const Sidebar = ({
             </div>
           </div>
           <div className="badge-container">
-            <button type="button" onClick={() => setAuthVisible(true)}>
+            <button type="button" onClick={() => setAuthFormOpen(true)}>
               {syncEnabled ? 'Sync enabled' : 'Enable sync'}
             </button>
             {!isOnline && (
@@ -95,17 +91,6 @@ const Sidebar = ({
           <button type="submit">Add</button>
         </form>
       </aside>
-      {authVisible && (
-        <AuthForm
-          key={authKey}
-          onClose={() => setAuthVisible(false)}
-          onAuthChange={() => {
-            setAuthKey((key) => key + 1);
-            setSyncEnabled(pb.authStore.isValid);
-            setSyncMessage('');
-          }}
-        />
-      )}
     </>
   );
 };
