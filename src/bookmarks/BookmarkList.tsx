@@ -1,46 +1,23 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import type { LocalBookmark } from '../model/model.ts';
-import { createId, db } from '../persistence/database.ts';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../persistence/database.ts';
 import { useAppStore } from '../store/appStore.ts';
+import { AddBookmarkForm } from './AddBookmarkForm.tsx';
 
 const BookmarkList = () => {
   const categoryId = useAppStore((state) => state.selectedCategoryId);
-  const [bookmarks, setBookmarks] = useState<LocalBookmark[]>([]);
-  const [title, setTitle] = useState('');
-  const [link, setLink] = useState('');
-
-  useEffect(() => {
-    db.bookmarks.orderBy('order').toArray().then((items) => {
-      setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
-    });
-  }, [categoryId]);
-
-  const addBookmark = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!title.trim() || !link.trim()) return;
-    const now = new Date().toISOString();
-    await db.bookmarks.add({ id: createId(), title: title.trim(), link: link.trim(), order: bookmarks.length + 1, updatedAt: now });
-    setTitle('');
-    setLink('');
+  const bookmarks = useLiveQuery(async () => {
     const items = await db.bookmarks.orderBy('order').toArray();
-    setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
-  };
-
+    return categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId));
+  }, [categoryId]) ?? [];
   const removeBookmark = async (id: string) => {
     await db.bookmarks.delete(id);
-    const items = await db.bookmarks.orderBy('order').toArray();
-    setBookmarks(categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId)));
   };
 
   return (
     <div className="card">
       <h2 className="card-title">Local Bookmarks</h2>
       <p>Changes are saved to this device immediately, even offline.</p>
-      <form onSubmit={addBookmark} className="add-form">
-        <input aria-label="Bookmark title" placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
-        <input aria-label="Bookmark URL" placeholder="https://example.com" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
-        <button type="submit">Add</button>
-      </form>
+      <AddBookmarkForm />
 
       <div className="bookmark-list">
         {bookmarks.map((bookmark) => (

@@ -8,6 +8,7 @@ const AuthForm = () => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
+  const isSyncEnabled = useAppStore((state) => state.isSyncEnabled);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -20,7 +21,7 @@ const AuthForm = () => {
     }
   };
 
-  const content = pb.authStore.isValid ? (
+  const content = isSyncEnabled ? (
     <div>
       <h2 id="auth-title" className="card-title">PocketBase Account</h2>
       <p>Signed in as {pb.authStore.record?.email || pb.authStore.record?.username}.</p>

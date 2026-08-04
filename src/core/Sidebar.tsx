@@ -2,14 +2,14 @@ import { AddCategoryForm } from '../categories/AddCategoryForm.tsx'
 import { CategoriesList } from '../categories/CategoriesList.tsx'
 import { SyncControls } from '../sync/SyncControls.tsx'
 
-const Sidebar = ({ syncEnabled }: { syncEnabled: boolean }) => {
+const Sidebar = () => {
   return (
     <aside className="sidebar">
       <header className="navbar">
         <div className="brand">
           <h1 className="brand-title">Start Five</h1>
         </div>
-        <SyncControls syncEnabled={syncEnabled} />
+        <SyncControls />
       </header>
       <h2 className="sidebar-title">Categories</h2>
       <CategoriesList />

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { pullBookmarks, pushBookmarks } from './sync.ts'
 import { useAppStore } from '../store/appStore.ts'
 
-const SyncControls = ({ syncEnabled }: { syncEnabled: boolean }) => {
+const SyncControls = () => {
   const [syncMessage, setSyncMessage] = useState('')
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen)
+  const syncEnabled = useAppStore((state) => state.isSyncEnabled)
 
   const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
     try {
