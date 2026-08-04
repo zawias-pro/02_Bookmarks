@@ -2,9 +2,8 @@ const Navbar = ({ isOnline, syncEnabled, onSyncAccountClick, onPull, onPush, syn
   return (
     <header className="navbar">
       <div className="brand">
-        <div className="brand-icon">BM</div>
         <div>
-          <h1 className="brand-title">Bookmarks Starter</h1>
+          <h1 className="brand-title">Start Five</h1>
         </div>
       </div>
       <div className="badge-container">

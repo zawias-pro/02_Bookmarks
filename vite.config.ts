@@ -11,8 +11,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
       },
       manifest: {
-        name: 'Bookmarks Starter (Offline Ready)',
-        short_name: 'Bookmarks',
+        name: 'Start Five',
+        short_name: 'Start Five',
         description: 'Offline-first Bookmarks Manager with PocketBase synchronization',
         theme_color: '#0f172a',
         background_color: '#0f172a',
