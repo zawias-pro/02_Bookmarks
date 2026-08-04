@@ -8,33 +8,21 @@ import styles from './App.module.css'
 
 const App = () => {
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [authKey, setAuthKey] = useState(0);
-  const [syncEnabled, setSyncEnabled] = useState(() => pb.authStore.isValid);
   const isAuthFormOpen = useAppStore((state) => state.isAuthFormOpen);
-  const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
 
   return (
     <div className={styles.app}>
       <div className={styles.sidebar}>
-          <Sidebar
-            selectedCategoryId={categoryId}
-            onSelect={setCategoryId}
-            syncEnabled={syncEnabled}
-          />
+        <Sidebar
+          selectedCategoryId={categoryId}
+          onSelect={setCategoryId}
+          syncEnabled={pb.authStore.isValid}
+        />
       </div>
       <main className={styles.main}>
         <BookmarkList categoryId={categoryId}/>
       </main>
-      {isAuthFormOpen && (
-        <AuthForm
-          key={authKey}
-          onClose={() => setAuthFormOpen(false)}
-          onAuthChange={() => {
-            setAuthKey((key) => key + 1)
-            setSyncEnabled(pb.authStore.isValid)
-          }}
-        />
-      )}
+      {isAuthFormOpen && <AuthForm />}
     </div>
   );
 }

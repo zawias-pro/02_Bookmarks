@@ -1,20 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, type FormEvent } from 'react';
+import { Modal } from '../components/Modal/Modal.tsx';
 import { pb } from '../persistence/pocketbase.ts';
+import { useAppStore } from "../store/appStore.ts";
 
-const AuthForm = ({ onAuthChange, onClose }: { onAuthChange: () => void; onClose: () => void }) => {
+const AuthForm = () => {
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,25 +15,23 @@ const AuthForm = ({ onAuthChange, onClose }: { onAuthChange: () => void; onClose
     try {
       await pb.collection('users').authWithPassword(identity, password);
       setPassword('');
-      onAuthChange();
     } catch {
       setMessage('Authentication failed.');
     }
   };
 
   const content = pb.authStore.isValid ? (
-    <div className="modal-card card">
+    <div>
       <h2 id="auth-title" className="card-title">PocketBase Account</h2>
       <p>Signed in as {pb.authStore.record?.email || pb.authStore.record?.username}.</p>
       <button type="button" onClick={() => {
         pb.authStore.clear();
-        onAuthChange();
       }}>
         Sign out
       </button>
     </div>
   ) : (
-    <div className="modal-card card">
+    <div>
       <h2 id="auth-title" className="card-title">
         Login
       </h2>
@@ -79,19 +70,10 @@ const AuthForm = ({ onAuthChange, onClose }: { onAuthChange: () => void; onClose
     </div>
   );
 
-  return createPortal(
-    <div
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div role="dialog" aria-modal="true" aria-labelledby="auth-title">
-        <button className="modal-close" type="button" aria-label="Close authentication" onClick={onClose}>Close</button>
-        {content}
-      </div>
-    </div>,
-    document.body,
+  return (
+    <Modal titleId="auth-title" onClose={() => {setAuthFormOpen(false)}}>
+      {content}
+    </Modal>
   );
 };
 
