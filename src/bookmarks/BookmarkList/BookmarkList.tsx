@@ -3,6 +3,7 @@ import { db } from '../../persistence/database.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
+import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
 import styles from './BookmarkList.module.css';
 
 const BookmarkList = () => {
@@ -22,6 +23,7 @@ const BookmarkList = () => {
       </ul>
       <button type="button" onClick={() => setBookmarkFormOpen(true)}>Add bookmark</button>
       {isBookmarkFormOpen && <AddBookmarkForm />}
+      <EditBookmarkForm />
     </div>
   );
 };
