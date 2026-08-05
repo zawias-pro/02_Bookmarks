@@ -12,7 +12,11 @@ const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
   return (
     <li className={styles.item}>
       <a href={bookmark.link} target="_self" rel="noopener noreferrer">
-        <img src={bookmark.link+'/favicon.ico'} alt={bookmark.title} />
+        <img
+          src={`https://favicon.vemetric.com/${new URL(bookmark.link).hostname}?size=64`}
+          alt={`Icon for ${bookmark.title}`}
+          aria-hidden
+        />
         <div className={styles.details}>
           <div className={styles.title}>{bookmark.title}</div>
           <div className={styles.link}>{bookmark.link}</div>
