@@ -5,6 +5,8 @@ import { AddBookmarkForm } from './AddBookmarkForm.tsx';
 
 const BookmarkList = () => {
   const categoryId = useAppStore((state) => state.selectedCategoryId);
+  const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen);
+  const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
   const bookmarks = useLiveQuery(async () => {
     const items = await db.bookmarks.orderBy('order').toArray();
     return categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId));
@@ -17,7 +19,8 @@ const BookmarkList = () => {
     <div className="card">
       <h2 className="card-title">Local Bookmarks</h2>
       <p>Changes are saved to this device immediately, even offline.</p>
-      <AddBookmarkForm />
+      <button type="button" onClick={() => setBookmarkFormOpen(true)}>Add bookmark</button>
+      {isBookmarkFormOpen && <AddBookmarkForm />}
 
       <div className="bookmark-list">
         {bookmarks.map((bookmark) => (
