@@ -8,15 +8,23 @@ const CategoriesList = () => {
   const setSelectedCategoryId = useAppStore((state) => state.setSelectedCategoryId)
 
   return (
-    <nav aria-label="Bookmark categories" className="category-list">
-      <button className={selectedCategoryId === null ? 'category-option selected' : 'category-option'} type="button" onClick={() => setSelectedCategoryId(null)}>
-        Any category
-      </button>
-      {categories.map((category) => (
-        <button className={selectedCategoryId === category.id ? 'category-option selected' : 'category-option'} type="button" key={category.id} onClick={() => setSelectedCategoryId(category.id)}>
-          {category.name}
-        </button>
-      ))}
+    <nav aria-label="Categories">
+      <ul>
+        <li>
+          <button className={selectedCategoryId === null ? 'category-option selected' : 'category-option'} type="button"
+                  onClick={() => setSelectedCategoryId(null)}>
+            Any category
+          </button>
+        </li>
+        {categories.map((category) => (
+          <li key={category.id}>
+            <button className={selectedCategoryId === category.id ? 'category-option selected' : 'category-option'}
+                    type="button" onClick={() => setSelectedCategoryId(category.id)}>
+              {category.name}
+            </button>
+          </li>
+        ))}
+      </ul>
     </nav>
   )
 }
