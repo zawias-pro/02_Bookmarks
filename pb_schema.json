@@ -72,7 +72,7 @@
           "collectionId": "categories_coll_01",
           "cascadeDelete": false,
           "minSelect": null,
-          "maxSelect": null,
+          "maxSelect": 1,
           "displayFields": null
         }
       },

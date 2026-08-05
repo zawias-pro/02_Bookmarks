@@ -5,7 +5,7 @@ export interface LocalBookmark {
   link: string;
   favicon?: string;
   order: number;
-  categoryIds?: string[];
+  categoryId?: string;
   updatedAt: string;
 }
 

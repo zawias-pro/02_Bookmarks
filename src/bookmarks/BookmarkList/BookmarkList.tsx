@@ -12,7 +12,7 @@ const BookmarkList = () => {
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
   const bookmarks = useLiveQuery(async () => {
     const items = await db.bookmarks.orderBy('order').toArray();
-    return categoryId === null ? items : items.filter((bookmark) => bookmark.categoryIds?.includes(categoryId));
+    return categoryId === null ? items.filter((bookmark) => !bookmark.categoryId) : items.filter((bookmark) => bookmark.categoryId === categoryId);
   }, [categoryId]) ?? [];
   return (
     <div>

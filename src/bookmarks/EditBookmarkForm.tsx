@@ -13,16 +13,19 @@ const EditBookmarkForm = () => {
   )
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), []) ?? []
 
   useEffect(() => {
     setTitle(bookmark?.title ?? '')
     setLink(bookmark?.link ?? '')
+    setCategoryId(bookmark?.categoryId ?? '')
   }, [bookmark])
 
   const updateBookmark = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!bookmark || !title.trim() || !link.trim()) return
-    await db.bookmarks.update(bookmark.id, { title: title.trim(), link: link.trim(), updatedAt: new Date().toISOString() })
+    await db.bookmarks.update(bookmark.id, { title: title.trim(), link: link.trim(), categoryId: categoryId || undefined, updatedAt: new Date().toISOString() })
     setEditingBookmarkId(null)
   }
 
@@ -36,6 +39,11 @@ const EditBookmarkForm = () => {
         <input id="edit-bookmark-title-input" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
         <label htmlFor="edit-bookmark-link-input">URL</label>
         <input id="edit-bookmark-link-input" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
+        <label htmlFor="edit-bookmark-category">Category</label>
+        <select id="edit-bookmark-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">No category</option>
+          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+        </select>
         <button type="submit">Save</button>
       </form>
     </Modal>

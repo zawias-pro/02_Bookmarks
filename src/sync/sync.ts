@@ -42,10 +42,7 @@ const pushBookmarks = async () => {
       link: bookmark.link,
       favicon: bookmark.favicon,
       order: bookmark.order,
-      categories: bookmark.categoryIds?.flatMap((categoryId) => {
-        const remoteId = categoryIds.get(categoryId);
-        return remoteId ? [remoteId] : [];
-      }),
+      categories: bookmark.categoryId ? [categoryIds.get(bookmark.categoryId)].filter((id): id is string => Boolean(id)) : [],
       user: pb.authStore.record.id,
     };
 
@@ -85,7 +82,7 @@ const pullBookmarks = async () => {
       link: bookmark.link,
       favicon: bookmark.favicon,
       order: bookmark.order,
-      categoryIds: bookmark.categories,
+      categoryId: bookmark.categories?.[0],
       updatedAt: bookmark.updated,
     })));
   });

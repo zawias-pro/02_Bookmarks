@@ -13,7 +13,7 @@ const CategoriesList = () => {
         <li>
           <button className={selectedCategoryId === null ? 'category-option selected' : 'category-option'} type="button"
                   onClick={() => setSelectedCategoryId(null)}>
-            Any category
+            No category
           </button>
         </li>
         {categories.map((category) => (
