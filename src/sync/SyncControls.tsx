@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { pullBookmarks, pushBookmarks } from './sync.ts'
 import { useAppStore } from '../store/appStore.ts'
+import { pb } from '../persistence/pocketbase.ts'
 
 const SyncControls = () => {
   const [syncMessage, setSyncMessage] = useState('')
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen)
-  const syncEnabled = useAppStore((state) => state.isSyncEnabled)
+  const authUser = useAppStore((state) => state.authUser)
+  const syncEnabled = authUser !== null
 
   const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
     try {
@@ -16,14 +18,26 @@ const SyncControls = () => {
     }
   }
 
+  if(!syncEnabled) {
+    return (
+      <div>
+        Changes not synced.
+        <button type="button" onClick={() => setAuthFormOpen(true)}>
+          Enable sync
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className="badge-container">
-      <button type="button" onClick={() => setAuthFormOpen(true)}>
-        {syncEnabled ? 'Sync enabled' : 'Enable sync'}
-      </button>
-      <button type="button" onClick={() => void sync(pullBookmarks, 'Pulled')} disabled={!syncEnabled}>Force pull</button>
-      <button type="button" onClick={() => void sync(pushBookmarks, 'Pushed')} disabled={!syncEnabled}>Force push</button>
-      {syncMessage && <span className="badge">{syncMessage}</span>}
+    <div>
+       Sync enabled as {authUser.username || authUser.email}
+       <button type="button" onClick={() => pb.authStore.clear()}>
+         Sign out
+       </button>
+      <button type="button" onClick={() => void sync(pullBookmarks, 'Pulled')} disabled={!syncEnabled}>Pull</button>
+      <button type="button" onClick={() => void sync(pushBookmarks, 'Pushed')} disabled={!syncEnabled}>Push</button>
+      {syncMessage && <p>{syncMessage}</p>}
     </div>
   )
 }

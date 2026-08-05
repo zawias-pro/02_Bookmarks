@@ -8,7 +8,6 @@ const AuthForm = () => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
-  const isSyncEnabled = useAppStore((state) => state.isSyncEnabled);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -16,23 +15,15 @@ const AuthForm = () => {
     try {
       await pb.collection('users').authWithPassword(identity, password);
       setPassword('');
+      setAuthFormOpen(false);
     } catch {
       setMessage('Authentication failed.');
     }
   };
 
-  const content = isSyncEnabled ? (
-    <div>
-      <h2 id="auth-title" className="card-title">PocketBase Account</h2>
-      <p>Signed in as {pb.authStore.record?.email || pb.authStore.record?.username}.</p>
-      <button type="button" onClick={() => {
-        pb.authStore.clear();
-      }}>
-        Sign out
-      </button>
-    </div>
-  ) : (
-    <div>
+  return (
+    <Modal titleId="auth-title" onClose={() => {setAuthFormOpen(false)}}>
+      <div>
       <h2 id="auth-title" className="card-title">
         Login
       </h2>
@@ -68,12 +59,7 @@ const AuthForm = () => {
       </form>
 
       {message && <p role="alert">{message}</p>}
-    </div>
-  );
-
-  return (
-    <Modal titleId="auth-title" onClose={() => {setAuthFormOpen(false)}}>
-      {content}
+      </div>
     </Modal>
   );
 };
