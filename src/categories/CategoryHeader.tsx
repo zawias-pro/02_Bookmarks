@@ -10,7 +10,8 @@ const CategoryHeader = () => {
   const category = useLiveQuery(() => categoryId === null ? undefined : db.categories.get(categoryId), [categoryId])
 
   const deleteCategory = async () => {
-    if (!category) return
+    if (!category) throw new Error('Cannot delete category because no category is selected.')
+    if (!window.confirm(`Delete category "${category.name}"? Related bookmarks will be kept without a category.`)) return
     await db.transaction('rw', db.categories, db.bookmarks, async () => {
       await db.bookmarks.where('categoryId').equals(category.id).modify({ categoryId: undefined })
       await db.categories.delete(category.id)

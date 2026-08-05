@@ -30,3 +30,4 @@
 - Oxlint enforces no default exports with `import/no-default-export` and requires function expressions with `func-style`; use arrow functions and named export lists at the end of modules.
 - Components use direct inline prop types rather than `React.FC` or separate component prop interfaces.
 - TypeScript is strict about unused locals and parameters; keep `tsc -b` passing.
+- Avoid defensive code that silently ignores unexpected states. If an invariant is violated, throw an error or surface it explicitly instead of returning early. For example, `deleteCategory` should throw when no category is selected rather than silently doing nothing. This applies throughout the codebase; reserve early returns for expected user input validation and deliberate cancellation.

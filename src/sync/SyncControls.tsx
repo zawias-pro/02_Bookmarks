@@ -8,7 +8,8 @@ const SyncControls = () => {
   const authUser = useAppStore((state) => state.authUser)
   const syncEnabled = authUser !== null
 
-  const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string) => {
+  const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string, confirmation: string) => {
+    if (!window.confirm(confirmation)) return
     try {
       const counts = await action()
       toast.success(`${verb} ${counts.bookmarks} bookmarks, ${counts.categories} categories`)
@@ -35,8 +36,8 @@ const SyncControls = () => {
        <button type="button" onClick={() => { pb.authStore.clear(); toast.success('Signed out') }}>
          Sign out
        </button>
-      <button type="button" onClick={() => void sync(pullBookmarks, 'Pulled')} disabled={!syncEnabled}>Pull</button>
-      <button type="button" onClick={() => void sync(pushBookmarks, 'Pushed')} disabled={!syncEnabled}>Push</button>
+       <button type="button" onClick={() => void sync(pullBookmarks, 'Pulled', 'Pull from the server? This will replace all local bookmarks and categories.')} disabled={!syncEnabled}>Pull</button>
+       <button type="button" onClick={() => void sync(pushBookmarks, 'Pushed', 'Push to the server? This will replace all remote bookmarks and categories.')} disabled={!syncEnabled}>Push</button>
     </div>
   )
 }

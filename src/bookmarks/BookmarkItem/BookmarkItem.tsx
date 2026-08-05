@@ -5,6 +5,7 @@ import styles from './BookmarkItem.module.css'
 
 const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
   const removeBookmark = async () => {
+    if (!window.confirm(`Delete bookmark "${bookmark.title}"?`)) return
     await db.bookmarks.delete(bookmark.id)
   }
   const setEditingBookmarkId = useAppStore((state) => state.setEditingBookmarkId)
