@@ -2,6 +2,7 @@ import { AuthForm } from '../auth/AuthForm.tsx';
 import { BookmarkList } from '../bookmarks/BookmarkList.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { useAppStore } from '../store/appStore.ts';
+import { Toaster } from 'sonner';
 import styles from './App.module.css'
 
 const App = () => {
@@ -16,6 +17,7 @@ const App = () => {
         <BookmarkList />
       </main>
       {isAuthFormOpen && <AuthForm />}
+      <Toaster position="bottom-right" />
     </div>
   );
 }

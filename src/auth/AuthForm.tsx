@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Modal } from '../components/Modal/Modal.tsx';
 import { pb } from '../persistence/pocketbase.ts';
 import { useAppStore } from "../store/appStore.ts";
+import { toast } from 'sonner';
 
 const AuthForm = () => {
   const [identity, setIdentity] = useState('');
@@ -16,6 +17,7 @@ const AuthForm = () => {
       await pb.collection('users').authWithPassword(identity, password);
       setPassword('');
       setAuthFormOpen(false);
+      toast.success('Signed in');
     } catch {
       setMessage('Authentication failed.');
     }
