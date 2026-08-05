@@ -3,6 +3,7 @@ import { BookmarkList } from '../bookmarks/BookmarkList/BookmarkList.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { useAppStore } from '../store/appStore.ts';
 import { Toaster } from 'sonner';
+import { CategoryHeader } from '../categories/CategoryHeader.tsx';
 import styles from './App.module.css'
 
 const App = () => {
@@ -14,6 +15,7 @@ const App = () => {
           <Sidebar />
       </div>
       <main className={styles.main}>
+        <CategoryHeader />
         <BookmarkList />
       </main>
       {isAuthFormOpen && <AuthForm />}

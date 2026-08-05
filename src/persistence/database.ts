@@ -14,7 +14,7 @@ class BookmarksDatabase extends Dexie {
       profiles: 'id',
     });
     this.version(2).stores({
-      bookmarks: 'id, remoteId, updatedAt, order',
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
       categories: 'id, name, createdAt',
       profiles: 'id',
     }).upgrade((transaction) => transaction.table('bookmarks').toCollection().modify((bookmark: LocalBookmark & { categoryIds?: string[] }) => {

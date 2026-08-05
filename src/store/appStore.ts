@@ -10,12 +10,14 @@ type AuthUser = RecordModel & {
 type AppStore = {
   isAuthFormOpen: boolean
   isCategoryFormOpen: boolean
+  isCategoryEditFormOpen: boolean
   isBookmarkFormOpen: boolean
   editingBookmarkId: string | null
   authUser: AuthUser | null
   selectedCategoryId: string | null
   setAuthFormOpen: (isOpen: boolean) => void
   setCategoryFormOpen: (isOpen: boolean) => void
+  setCategoryEditFormOpen: (isOpen: boolean) => void
   setBookmarkFormOpen: (isOpen: boolean) => void
   setEditingBookmarkId: (bookmarkId: string | null) => void
   setSelectedCategoryId: (categoryId: string | null) => void
@@ -24,12 +26,14 @@ type AppStore = {
 const useAppStore = create<AppStore>((set) => ({
   isAuthFormOpen: false,
   isCategoryFormOpen: false,
+  isCategoryEditFormOpen: false,
   isBookmarkFormOpen: false,
   editingBookmarkId: null,
   authUser: pb.authStore.record as AuthUser | null,
   selectedCategoryId: null,
   setAuthFormOpen: (isOpen) => set({ isAuthFormOpen: isOpen }),
   setCategoryFormOpen: (isOpen) => set({ isCategoryFormOpen: isOpen }),
+  setCategoryEditFormOpen: (isOpen) => set({ isCategoryEditFormOpen: isOpen }),
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),
   setEditingBookmarkId: (bookmarkId) => set({ editingBookmarkId: bookmarkId }),
   setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
