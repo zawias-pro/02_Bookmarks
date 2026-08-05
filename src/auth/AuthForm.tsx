@@ -7,60 +7,49 @@ import { toast } from 'sonner';
 const AuthForm = () => {
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage('');
     try {
       await pb.collection('users').authWithPassword(identity, password);
       setPassword('');
       setAuthFormOpen(false);
       toast.success('Signed in');
     } catch {
-      setMessage('Authentication failed.');
+      toast.success('Sign in failed');
     }
   };
 
   return (
     <Modal titleId="auth-title" onClose={() => {setAuthFormOpen(false)}}>
       <div>
-      <h2 id="auth-title" className="card-title">
+      <h2 id="auth-title">
         Login
       </h2>
       <form onSubmit={submit}>
-        <div className="form-group">
-          <label className="form-label" htmlFor="identity">Email or Username</label>
+        <div>
+          <label htmlFor="identity">Email or Username</label>
           <input
             id="identity"
             type="text"
-            className="form-input"
             value={identity}
             onChange={(event) => setIdentity(event.target.value)}
           />
         </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="password">Password</label>
+        <div>
+          <label htmlFor="password">Password</label>
           <input
             id="password"
             type="password"
-            className="form-input"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </div>
-
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
+        <button type="submit">
           Log in
         </button>
       </form>
-
-      {message && <p role="alert">{message}</p>}
       </div>
     </Modal>
   );
