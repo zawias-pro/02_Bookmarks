@@ -1,5 +1,5 @@
 import { AuthForm } from '../auth/AuthForm.tsx';
-import { BookmarkList } from '../bookmarks/BookmarkList.tsx';
+import { BookmarkList } from '../bookmarks/BookmarkList/BookmarkList.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { useAppStore } from '../store/appStore.ts';
 import { Toaster } from 'sonner';

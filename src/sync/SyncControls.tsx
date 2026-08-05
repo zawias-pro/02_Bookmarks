@@ -31,6 +31,7 @@ const SyncControls = () => {
   return (
     <div>
        Sync enabled as {authUser.username || authUser.email}
+      <br/>
        <button type="button" onClick={() => { pb.authStore.clear(); toast.success('Signed out') }}>
          Sign out
        </button>
