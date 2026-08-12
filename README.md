@@ -3,7 +3,7 @@
 ## Development
 
 ```
-docker compose up
+podman compose up
 ```
 
 Frontend will be running at:

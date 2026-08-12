@@ -6,8 +6,8 @@
 - Run the frontend development server with `npm run dev`; it serves `http://localhost:5177`.
 - Run verification with `npm run lint && npm run build`; `build` runs `tsc -b` before `vite build`.
 - Run the production server with `npm run preview`, normally after `npm run build`.
-- Start PocketBase with `docker compose up -d --build`; its API is at `http://127.0.0.1:8090/api`.
-- Run the complete local stack with `docker compose up`; Vite is at `http://localhost:5177` and PocketBase is at `http://localhost:8090`.
+- Start PocketBase with `podman compose up -d --build`; its API is at `http://127.0.0.1:8090/api`.
+- Run the complete local stack with `podman compose up`; Vite is at `http://localhost:5177` and PocketBase is at `http://localhost:8090`.
 
 ## Runtime Setup
 
