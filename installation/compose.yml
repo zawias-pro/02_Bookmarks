@@ -1,0 +1,36 @@
+name: 02-bookmarks
+
+services:
+  pocketbase:
+    build:
+      context: ..
+      dockerfile: installation/pocketbase/Containerfile
+    restart: unless-stopped
+    expose:
+      - "8090"
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ../pb_data:/pb/pb_data:Z
+      - ../pb_migrations:/pb/pb_migrations:Z,ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: installation/frontend/Containerfile
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

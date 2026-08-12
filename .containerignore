@@ -1,5 +1,6 @@
-*.log*
+.git
+.idea
 node_modules
 dist
-.idea
 pb_data
+*.log

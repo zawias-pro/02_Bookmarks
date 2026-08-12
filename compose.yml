@@ -2,20 +2,27 @@ services:
   pocketbase:
     build:
       context: .
+      dockerfile: installation/pocketbase/Containerfile
     container_name: pocketbase
     restart: unless-stopped
     ports:
       - "8090:8090"
     volumes:
       - ./pb_data:/pb/pb_data:Z
-      - ./pb_migrations:/pb/pb_migrations:Z
+      - ./pb_migrations:/pb/pb_migrations:Z,ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   vite:
-    image: node:24-alpine
+    image: node:24.13.1-alpine3.22
     container_name: bookmarks-vite
     working_dir: /app
     depends_on:
-      - pocketbase
+      pocketbase:
+        condition: service_healthy
     ports:
       - "5177:5177"
     environment:
@@ -24,6 +31,11 @@ services:
       - .:/app:Z
       - vite_node_modules:/app/node_modules
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5177/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   vite_node_modules:
