@@ -10,7 +10,7 @@ const Sidebar = () => {
     <aside className="sidebar">
       <header className="navbar">
         <div className="brand">
-          <h1 className="brand-title">Start Five</h1>
+          <h1 className="brand-title">02_Bookmarks</h1>
         </div>
         <SyncControls />
       </header>

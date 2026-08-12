@@ -1,7 +1,6 @@
 {
-  "name": "start-five",
+  "name": "02-bookmarks",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
