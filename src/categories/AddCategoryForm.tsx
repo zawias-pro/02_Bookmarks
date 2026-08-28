@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { createId, db } from '../persistence/database.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
+import { Field } from '../components/Field/Field.tsx'
+import { Button } from '../components/Button/Button.tsx'
 import { useAppStore } from '../store/appStore.ts'
 
 const AddCategoryForm = () => {
@@ -24,10 +26,11 @@ const AddCategoryForm = () => {
   return (
     <Modal titleId="add-category-title" onClose={() => setCategoryFormOpen(false)}>
       <h2 id="add-category-title">Add category</h2>
-      <form className="category-form" onSubmit={addCategory}>
-        <label htmlFor="category-name">Category name</label>
-        <input id="category-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Category name" autoFocus />
-        <button type="submit">Add</button>
+      <form onSubmit={addCategory}>
+        <Field label="Category name" htmlFor="category-name">
+          <input id="category-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Category name" autoFocus />
+        </Field>
+        <Button type="submit">Add</Button>
       </form>
     </Modal>
   )

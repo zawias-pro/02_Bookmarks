@@ -1,0 +1,18 @@
+.status {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.user {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../persistence/database.ts';
 import { useAppStore } from '../../store/appStore.ts';
+import { Button } from '../../components/Button/Button.tsx';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
 import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
@@ -21,11 +22,14 @@ const BookmarkList = () => {
           <BookmarkItem key={bookmark.id} bookmark={bookmark} />
         ))}
       </ul>
-      <button type="button" onClick={() => setBookmarkFormOpen(true)}>Add bookmark</button>
+      {bookmarks.length === 0 && <p className={styles.empty}>This category is empty.</p>}
+      <div className={styles.actions}>
+        <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
+      </div>
       {isBookmarkFormOpen && <AddBookmarkForm />}
       <EditBookmarkForm />
     </div>
   );
 };
 
-export { BookmarkList };
+export { BookmarkList }

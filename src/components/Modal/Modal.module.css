@@ -3,26 +3,57 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 35%);
+  padding: 1.25rem;
+  background: rgb(0 0 0 / 0.3);
   z-index: 10;
 }
 
 .dialog {
   position: relative;
-  width: min(100%, 32rem);
+  width: min(100%, 30rem);
   outline: none;
 }
 
 .card {
-  padding: 1rem;
-  background: white;
-  border: 1px solid;
+  padding: 1.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.card h2 {
+  margin: 0 0 1.25rem;
+  padding-right: 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.card form {
+  display: flex;
+  flex-direction: column;
+}
+
+.card form > button + button {
+  margin-top: 0.5rem;
 }
 
 .close {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.75rem;
+  right: 0.75rem;
   z-index: 1;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
 }

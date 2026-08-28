@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createId, db } from '../persistence/database.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
+import { Field } from '../components/Field/Field.tsx'
+import { Button } from '../components/Button/Button.tsx'
 import { useAppStore } from '../store/appStore.ts'
 
 const AddBookmarkForm = () => {
@@ -35,17 +37,20 @@ const AddBookmarkForm = () => {
   return (
     <Modal titleId="add-bookmark-title" onClose={() => setBookmarkFormOpen(false)}>
       <h2 id="add-bookmark-title">Add bookmark</h2>
-      <form onSubmit={addBookmark} className="add-form">
-        <label htmlFor="bookmark-title">Title</label>
-        <input id="bookmark-title" aria-label="Bookmark title" placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
-        <label htmlFor="bookmark-link">URL</label>
-        <input id="bookmark-link" aria-label="Bookmark URL" placeholder="https://example.com" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
-        <label htmlFor="bookmark-category">Category</label>
-        <select id="bookmark-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-          <option value="">No category</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
-        <button type="submit">Add</button>
+      <form onSubmit={addBookmark}>
+        <Field label="Title" htmlFor="bookmark-title">
+          <input id="bookmark-title" aria-label="Bookmark title" placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
+        </Field>
+        <Field label="URL" htmlFor="bookmark-link">
+          <input id="bookmark-link" aria-label="Bookmark URL" placeholder="https://example.com" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
+        </Field>
+        <Field label="Category" htmlFor="bookmark-category">
+          <select id="bookmark-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+            <option value="">No category</option>
+            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </Field>
+        <Button type="submit">Add</Button>
       </form>
     </Modal>
   )

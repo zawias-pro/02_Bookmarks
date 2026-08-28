@@ -1,13 +1,9 @@
 import type { LocalBookmark } from '../../model/model.ts'
-import { db } from '../../persistence/database.ts'
 import { useAppStore } from '../../store/appStore.ts'
+import { Button } from '../../components/Button/Button.tsx'
 import styles from './BookmarkItem.module.css'
 
 const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
-  const removeBookmark = async () => {
-    if (!window.confirm(`Delete bookmark "${bookmark.title}"?`)) return
-    await db.bookmarks.delete(bookmark.id)
-  }
   const setEditingBookmarkId = useAppStore((state) => state.setEditingBookmarkId)
 
   return (
@@ -23,8 +19,7 @@ const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
           <div className={styles.link}>{bookmark.link}</div>
         </div>
       </a>
-      <button type="button" onClick={() => void removeBookmark()}>Delete</button>
-      <button type="button" onClick={() => setEditingBookmarkId(bookmark.id)}>Edit</button>
+      <Button variant="ghost" onClick={() => setEditingBookmarkId(bookmark.id)}>Edit</Button>
     </li>
   )
 }
