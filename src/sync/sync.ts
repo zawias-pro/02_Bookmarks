@@ -4,7 +4,7 @@ import { pb } from '../persistence/pocketbase.ts';
 import type { LocalBookmark, LocalCategory } from '../model/model.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name'>;
-type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { categories?: string[] };
+type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { categories?: string };
 
 const pushBookmarks = async () => {
   if (!pb.authStore.isValid || !pb.authStore.record) {
@@ -37,12 +37,17 @@ const pushBookmarks = async () => {
   }
 
   for (const bookmark of localBookmarks) {
+    const categoryId = bookmark.categoryId ? categoryIds.get(bookmark.categoryId) : undefined;
+    if (bookmark.categoryId && !categoryId) {
+      throw new Error(`Bookmark "${bookmark.title}" refers to a category that does not exist locally.`);
+    }
+
     const data = {
       title: bookmark.title,
       link: bookmark.link,
       favicon: bookmark.favicon,
       order: bookmark.order,
-      categories: bookmark.categoryId ? [categoryIds.get(bookmark.categoryId)].filter((id): id is string => Boolean(id)) : [],
+      categories: categoryId,
       user: pb.authStore.record.id,
     };
 
@@ -82,7 +87,7 @@ const pullBookmarks = async () => {
       link: bookmark.link,
       favicon: bookmark.favicon,
       order: bookmark.order,
-      categoryId: bookmark.categories?.[0],
+      categoryId: bookmark.categories,
       updatedAt: bookmark.updated,
     })));
   });
