@@ -72,6 +72,13 @@ const pullBookmarks = async () => {
     filter: `user = "${pb.authStore.record.id}"`,
     sort: 'name',
   });
+  const categoryIds = new Set(remoteCategories.map((category) => category.id));
+  for (const bookmark of remoteBookmarks) {
+    if (bookmark.categories && !categoryIds.has(bookmark.categories)) {
+      throw new Error(`Remote bookmark "${bookmark.title}" refers to a category that was not returned by the server.`);
+    }
+  }
+
   await db.transaction('rw', db.bookmarks, db.categories, async () => {
     await db.categories.clear();
     await db.bookmarks.clear();
