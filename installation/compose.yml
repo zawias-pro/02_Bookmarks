@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:8090:8090"
     volumes:
       - ../pb_data:/pb/pb_data:Z
-      - ../pb_migrations:/pb/pb_migrations:Z,ro
+      - ../pb_migrations:/pb/pb_migrations:Z
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
       interval: 10s

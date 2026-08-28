@@ -1,6 +1,6 @@
 # Self-hosting 02_Bookmarks
 
-This setup uses Podman, `podman compose`, and an existing Caddy installation.
+This setup uses Podman, `podman-compose`, and an existing Caddy installation.
 The application containers serve the frontend and PocketBase on loopback ports;
 Caddy provides the public HTTPS endpoint and proxies both services.
 
@@ -15,17 +15,23 @@ Caddy provides the public HTTPS endpoint and proxies both services.
 
 ## Install
 
-Clone the repository on the server and enter the installation directory:
+Clone the repository on the server and enter the installation directory. The
+commands below assume a root-owned production checkout, as used on `vps-02-ovh`:
 
 ```sh
 git clone <repository-url> 02-bookmarks
 cd 02-bookmarks/installation
 ```
 
-Start the production stack:
+Start the production stack. On `vps-02-ovh`, include the infrastructure override
+so both services join the existing `infra_proxy` network:
 
 ```sh
-podman compose up -d --build
+sudo podman-compose \
+  --podman-build-args=--network=host \
+  -f compose.yml \
+  -f compose.override.yml \
+  up -d --build --force-recreate
 ```
 
 Create the PocketBase administrator once. There are no default admin
@@ -36,7 +42,10 @@ is entered interactively and is not stored in the Compose configuration:
 read -r -p "Admin email: " PB_ADMIN_EMAIL
 read -r -s -p "Admin password: " PB_ADMIN_PASSWORD
 printf '\n'
-podman compose exec -T pocketbase \
+sudo podman-compose \
+  -f compose.yml \
+  -f compose.override.yml \
+  exec -T pocketbase \
   /pb/pocketbase superuser create "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" \
   --dir=/pb/pb_data
 ```
@@ -70,16 +79,20 @@ update the matching Caddy upstream.
 ## Operations
 
 ```sh
-podman compose ps
-podman compose logs -f
-podman compose down
+sudo podman-compose -f compose.yml -f compose.override.yml ps
+sudo podman-compose -f compose.yml -f compose.override.yml logs -f
+sudo podman-compose -f compose.yml -f compose.override.yml down
 ```
 
 To update a source checkout:
 
 ```sh
+cd /srv/02-bookmarks
 git pull
-podman compose up -d --build
+sudo podman-compose \
+  -f installation/compose.yml \
+  -f installation/compose.override.yml \
+  up -d --build --force-recreate
 ```
 
 The `../pb_data` directory contains the PocketBase database and is mounted
