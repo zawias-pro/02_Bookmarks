@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 const SyncControls = () => {
   const setAuthFormOpen = useAppStore((state) => state.setAuthFormOpen)
   const authUser = useAppStore((state) => state.authUser)
-  const syncEnabled = authUser !== null
+  const isAuthChecked = useAppStore((state) => state.isAuthChecked)
+  const syncEnabled = isAuthChecked && authUser !== null
 
   const sync = async (action: () => Promise<{ bookmarks: number; categories: number }>, verb: string, confirmation: string) => {
     if (!window.confirm(confirmation)) return
@@ -18,7 +19,11 @@ const SyncControls = () => {
     }
   }
 
-  if(!syncEnabled) {
+  if (!isAuthChecked) {
+    return <div>Checking sign-in...</div>
+  }
+
+  if (!syncEnabled) {
     return (
       <div>
         Changes not synced.

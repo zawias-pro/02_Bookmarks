@@ -14,12 +14,14 @@ type AppStore = {
   isBookmarkFormOpen: boolean
   editingBookmarkId: string | null
   authUser: AuthUser | null
+  isAuthChecked: boolean
   selectedCategoryId: string | null
   setAuthFormOpen: (isOpen: boolean) => void
   setCategoryFormOpen: (isOpen: boolean) => void
   setCategoryEditFormOpen: (isOpen: boolean) => void
   setBookmarkFormOpen: (isOpen: boolean) => void
   setEditingBookmarkId: (bookmarkId: string | null) => void
+  setAuthChecked: (isChecked: boolean) => void
   setSelectedCategoryId: (categoryId: string | null) => void
 }
 
@@ -30,12 +32,14 @@ const useAppStore = create<AppStore>((set) => ({
   isBookmarkFormOpen: false,
   editingBookmarkId: null,
   authUser: pb.authStore.record as AuthUser | null,
+  isAuthChecked: false,
   selectedCategoryId: null,
   setAuthFormOpen: (isOpen) => set({ isAuthFormOpen: isOpen }),
   setCategoryFormOpen: (isOpen) => set({ isCategoryFormOpen: isOpen }),
   setCategoryEditFormOpen: (isOpen) => set({ isCategoryEditFormOpen: isOpen }),
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),
   setEditingBookmarkId: (bookmarkId) => set({ editingBookmarkId: bookmarkId }),
+  setAuthChecked: (isChecked) => set({ isAuthChecked: isChecked }),
   setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
 }))
 
