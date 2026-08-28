@@ -28,8 +28,9 @@ Start the production stack:
 podman compose up -d --build
 ```
 
-Create the PocketBase administrator once. The password is entered interactively
-and is not stored in the Compose configuration:
+Create the PocketBase administrator once. There are no default admin
+credentials: choose the admin email and password when prompted. The password
+is entered interactively and is not stored in the Compose configuration:
 
 ```sh
 read -r -p "Admin email: " PB_ADMIN_EMAIL
