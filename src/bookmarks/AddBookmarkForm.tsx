@@ -9,7 +9,8 @@ import { useAppStore } from '../store/appStore.ts'
 const AddBookmarkForm = () => {
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
-  const [categoryId, setCategoryId] = useState('')
+  const selectedCategoryId = useAppStore((state) => state.selectedCategoryId)
+  const [categoryId, setCategoryId] = useState(selectedCategoryId ?? '')
   const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), []) ?? []
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen)
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen)
