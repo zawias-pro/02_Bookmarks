@@ -22,7 +22,7 @@
 
 .primary {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-fill);
 }
 
 .primary:hover:not(:disabled) {
@@ -31,7 +31,7 @@
 
 .danger {
   background: var(--color-danger);
-  color: white;
+  color: var(--color-on-fill);
 }
 
 .danger:hover:not(:disabled) {
