@@ -202,6 +202,19 @@ const pull = async () => {
 };
 
 let activeSync: Promise<SyncCounts> | undefined;
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
+  let timeoutId: number | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error('Sync request timed out.')), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  }
+};
 const runWorker = async (): Promise<SyncCounts> => {
   if (!pb.authStore.isValid || navigator.onLine === false) return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: 0, pushed: 0 };
   let pushed = 0;
@@ -211,6 +224,9 @@ const runWorker = async (): Promise<SyncCounts> => {
   for (const notice of notices) window.dispatchEvent(new CustomEvent('sync-notice', { detail: notice }));
   return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: pulled.pulled, pushed };
 };
-const syncNow = () => { activeSync ??= runWorker().finally(() => { activeSync = undefined; }); return activeSync; };
+const syncNow = () => {
+  activeSync ??= withTimeout(runWorker(), 15_000).finally(() => { activeSync = undefined; });
+  return activeSync;
+};
 
 export { createBookmark, createCategory, deleteBookmark, deleteCategory, syncNow, updateBookmark, updateCategory };

@@ -38,6 +38,7 @@ const useRealtimeSync = () => {
         await syncNow();
         retryAttempt = 0;
         retryNoticeShown = false;
+        return true;
       } catch {
         if (cancelled) return;
         if (showError && !retryNoticeShown) {
@@ -45,9 +46,13 @@ const useRealtimeSync = () => {
           toast.warning('Sync is temporarily unavailable. Retrying automatically; local changes are safe.');
         }
         scheduleRetry();
+        return false;
       }
     };
     const handleOnline = () => run();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void run();
+    };
     const handleNotice = (event: Event) => {
       const notice = (event as CustomEvent<{ kind: 'info' | 'conflict'; message: string }>).detail;
       if (notice.kind === 'conflict') toast.warning(notice.message);
@@ -61,8 +66,9 @@ const useRealtimeSync = () => {
          unsubscribeBookmarks = await pb.collection('bookmarks').subscribe('*', () => { void run(false); }, filter);
          unsubscribeCategories = await pb.collection('categories').subscribe('*', () => { void run(false); }, filter);
           unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => {
-            if (!cancelled) setRealtimeStatus('live');
-            void run(false);
+            void run(false).then((synced) => {
+              if (synced && !cancelled) setRealtimeStatus('live');
+            });
           });
         if (!cancelled) setRealtimeStatus('live');
       } catch (error) {
@@ -71,12 +77,14 @@ const useRealtimeSync = () => {
     };
     pb.realtime.onDisconnect = () => { if (!cancelled) setRealtimeStatus('reconnecting'); };
     window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('sync-notice', handleNotice);
     void start();
     return () => {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('sync-notice', handleNotice);
       pb.realtime.onDisconnect = undefined;
       void unsubscribeBookmarks?.();
