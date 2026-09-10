@@ -17,15 +17,9 @@ const resolveThemeSetting = (setting: ThemeSetting): Theme => {
   return window.matchMedia(themeMediaQuery).matches ? 'dark' : 'light'
 }
 
-const nextThemeSetting = (setting: ThemeSetting): ThemeSetting => {
-  if (setting === 'light') return 'dark'
-  if (setting === 'dark') return 'auto'
-  return 'light'
-}
-
 const applyTheme = (theme: Theme): void => {
   document.documentElement.dataset.theme = theme
 }
 
-export { readThemeSetting, resolveThemeSetting, nextThemeSetting, applyTheme, themeStorageKey, themeMediaQuery }
+export { readThemeSetting, resolveThemeSetting, applyTheme, themeStorageKey, themeMediaQuery }
 export type { Theme, ThemeSetting }

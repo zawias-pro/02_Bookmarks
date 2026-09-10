@@ -20,6 +20,49 @@ const localByRemote = async (collection: Collection, remoteId: string) =>
     ? (await db.bookmarks.where('remoteId').equals(remoteId).first())
     : (await db.categories.where('remoteId').equals(remoteId).first());
 
+const fetchFavicon = async (link: string) => {
+  const hostname = new URL(link).hostname;
+  const response = await fetch(`https://favicon.vemetric.com/${hostname}?size=64`);
+  if (!response.ok) throw new Error(`Could not fetch bookmark icon (${response.status}).`);
+  const blob = await response.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Could not read bookmark icon.'));
+        return;
+      }
+      resolve(reader.result);
+    });
+    reader.addEventListener('error', () => reject(new Error('Could not read bookmark icon.')));
+    reader.readAsDataURL(blob);
+  });
+};
+
+const dataUrlToFile = async (dataUrl: string) => {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const extension = blob.type.split('/')[1]?.replace('svg+xml', 'svg') || 'png';
+  return new File([blob], `favicon.${extension}`, { type: blob.type });
+};
+
+const faviconUrl = (bookmark: RemoteBookmark) => {
+  if (!bookmark.favicon) return undefined;
+  if (bookmark.favicon.startsWith('data:')) return bookmark.favicon;
+  return pb.files.getURL(bookmark, bookmark.favicon);
+};
+
+const bookmarkFormData = async (snapshot: LocalBookmark, categoryId: string | undefined, user?: string) => {
+  const data = new FormData();
+  data.set('title', snapshot.title);
+  data.set('link', snapshot.link);
+  data.set('order', String(snapshot.order));
+  data.set('categories', categoryId ?? '');
+  if (user) data.set('user', user);
+  if (snapshot.favicon?.startsWith('data:')) data.set('favicon', await dataUrlToFile(snapshot.favicon));
+  return data;
+};
+
 const enqueue = async (mutation: Omit<OutboxMutation, 'id' | 'createdAt'>) => {
   const previous = await db.outbox.where('entityId').equals(mutation.entityId).toArray();
   const createMutation = previous.find((item) => item.operation === 'create');
@@ -75,13 +118,36 @@ const createBookmark = async (input: { title: string; link: string; categoryId?:
   const title = input.title.trim();
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
-  const bookmark: LocalBookmark = { id: createId(), title, link, categoryId: input.categoryId, order: (await db.bookmarks.count()) + 1, updatedAt: new Date().toISOString() };
+  const favicon = navigator.onLine === false ? undefined : await fetchFavicon(link);
+  const bookmark: LocalBookmark = { id: createId(), title, link, favicon, categoryId: input.categoryId, order: (await db.bookmarks.count()) + 1, updatedAt: new Date().toISOString() };
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     await db.bookmarks.add(bookmark);
     await enqueue({ collection: 'bookmarks', operation: 'create', entityId: bookmark.id, snapshot: bookmark });
   });
   void syncNow();
   return bookmark.id;
+};
+
+const reloadFavicons = async () => {
+  userId();
+  if (navigator.onLine === false) throw new Error('Connect to the internet before loading bookmark icons.');
+  await syncNow();
+  const bookmarks = await db.bookmarks.toArray();
+  for (const bookmark of bookmarks) {
+    let favicon: string;
+    try {
+      favicon = await fetchFavicon(bookmark.link);
+    } catch (error) {
+      throw new Error(`Could not load the icon for "${bookmark.title}".`, { cause: error });
+    }
+    const updated = { ...bookmark, favicon, updatedAt: new Date().toISOString() };
+    await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+      await db.bookmarks.put(updated);
+      await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+    });
+  }
+  if (bookmarks.length > 0) await syncNow();
+  return bookmarks.length;
 };
 
 const updateBookmark = async (id: string, input: { title: string; link: string; categoryId?: string }) => {
@@ -109,8 +175,10 @@ const deleteBookmark = async (id: string) => {
 };
 
 const createRemote = async (mutation: OutboxMutation, snapshot: LocalBookmark | LocalCategory) => {
+  const bookmark = snapshot as LocalBookmark;
+  const categoryId = bookmark.categoryId ? (await db.categories.get(bookmark.categoryId))?.remoteId : undefined;
   const data = mutation.collection === 'bookmarks'
-    ? { title: (snapshot as LocalBookmark).title, link: (snapshot as LocalBookmark).link, favicon: (snapshot as LocalBookmark).favicon, order: (snapshot as LocalBookmark).order, categories: (snapshot as LocalBookmark).categoryId ? (await db.categories.get((snapshot as LocalBookmark).categoryId!))?.remoteId : undefined, user: userId() }
+    ? await bookmarkFormData(bookmark, categoryId, userId())
     : { name: (snapshot as LocalCategory).name, user: userId() };
   return collectionFor(mutation.collection).create(data);
 };
@@ -132,8 +200,12 @@ const conflictCopy = async (mutation: OutboxMutation, remote: RemoteBookmark | R
 const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice) => void) => {
   if (mutation.operation === 'create') {
     const remote = await createRemote(mutation, mutation.snapshot);
+    const remoteFavicon = mutation.collection === 'bookmarks' ? faviconUrl(remote as RemoteBookmark) : undefined;
+    if (mutation.collection === 'bookmarks' && (mutation.snapshot as LocalBookmark).favicon?.startsWith('data:') && (!remoteFavicon || remoteFavicon.startsWith('data:'))) {
+      throw new Error('PocketBase did not store the bookmark icon as a file.');
+    }
     await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
-      if (mutation.collection === 'bookmarks') await db.bookmarks.update(mutation.entityId, { remoteId: remote.id, updatedAt: remote.updated });
+      if (mutation.collection === 'bookmarks') await db.bookmarks.update(mutation.entityId, { remoteId: remote.id, favicon: remoteFavicon ?? (mutation.snapshot as LocalBookmark).favicon, updatedAt: remote.updated });
       else await db.categories.update(mutation.entityId, { remoteId: remote.id, updatedAt: remote.updated });
       await db.outbox.delete(mutation.id);
     });
@@ -150,12 +222,16 @@ const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice
   if (remote.updated !== mutation.baseRemoteUpdatedAt) { await conflictCopy(mutation, remote, notice); return; }
   if (mutation.operation === 'delete') await collectionFor(mutation.collection).delete(mutation.remoteId!);
   const updatedRemote = mutation.operation === 'delete' ? undefined : await collectionFor(mutation.collection).update(mutation.remoteId!, mutation.collection === 'bookmarks'
-    ? { title: (mutation.snapshot as LocalBookmark).title, link: (mutation.snapshot as LocalBookmark).link, favicon: (mutation.snapshot as LocalBookmark).favicon, order: (mutation.snapshot as LocalBookmark).order, categories: (mutation.snapshot as LocalBookmark).categoryId ? (await db.categories.get((mutation.snapshot as LocalBookmark).categoryId!))?.remoteId : null }
+    ? await bookmarkFormData(mutation.snapshot as LocalBookmark, (mutation.snapshot as LocalBookmark).categoryId ? (await db.categories.get((mutation.snapshot as LocalBookmark).categoryId!))?.remoteId : undefined)
     : { name: (mutation.snapshot as LocalCategory).name });
+  const remoteFavicon = mutation.collection === 'bookmarks' && updatedRemote ? faviconUrl(updatedRemote as RemoteBookmark) : undefined;
+  if (mutation.collection === 'bookmarks' && (mutation.snapshot as LocalBookmark).favicon?.startsWith('data:') && (!remoteFavicon || remoteFavicon.startsWith('data:'))) {
+    throw new Error('PocketBase did not store the bookmark icon as a file.');
+  }
   await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
     if (mutation.collection === 'bookmarks') {
       if (mutation.operation === 'delete') await db.bookmarks.delete(mutation.entityId);
-      else await db.bookmarks.update(mutation.entityId, { updatedAt: updatedRemote?.updated ?? remote.updated });
+      else await db.bookmarks.update(mutation.entityId, { favicon: remoteFavicon ?? (mutation.snapshot as LocalBookmark).favicon, updatedAt: updatedRemote?.updated ?? remote.updated });
     } else {
       if (mutation.operation === 'delete') await db.categories.delete(mutation.entityId);
       else await db.categories.update(mutation.entityId, { updatedAt: updatedRemote?.updated ?? remote.updated });
@@ -182,7 +258,9 @@ const pull = async () => {
     if (pendingRemoteIds.has(remote.id)) continue;
     const category = remote.categories ? await localByRemote('categories', remote.categories) : undefined;
     const local = await localByRemote('bookmarks', remote.id);
-    const value = { title: remote.title, link: remote.link, favicon: remote.favicon, order: remote.order, categoryId: category?.id, updatedAt: remote.updated };
+    const existingFavicon = local && 'favicon' in local ? local.favicon : undefined;
+    const favicon = faviconUrl(remote);
+    const value = { title: remote.title, link: remote.link, favicon: favicon ?? existingFavicon, order: remote.order, categoryId: category?.id, updatedAt: remote.updated };
     if (local) await db.bookmarks.update(local.id, value);
     else await db.bookmarks.put({ id: remote.id, remoteId: remote.id, ...value });
   }
@@ -229,4 +307,4 @@ const syncNow = () => {
   return activeSync;
 };
 
-export { createBookmark, createCategory, deleteBookmark, deleteCategory, syncNow, updateBookmark, updateCategory };
+export { createBookmark, createCategory, deleteBookmark, deleteCategory, reloadFavicons, syncNow, updateBookmark, updateCategory };

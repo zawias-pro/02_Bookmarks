@@ -34,16 +34,25 @@
       },
       {
         "system": false,
-        "id": "field_favicon",
+        "id": "field_favicon_file",
         "name": "favicon",
-        "type": "text",
+        "type": "file",
         "required": false,
         "presentable": false,
         "unique": false,
         "options": {
-          "min": null,
-          "max": 500,
-          "pattern": ""
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "image/svg+xml",
+            "image/x-icon"
+          ],
+          "thumbs": [],
+          "maxSelect": 1,
+          "maxSize": 5242880,
+          "protected": false
         }
       },
       {

@@ -32,6 +32,18 @@
   flex-shrink: 0;
 }
 
+.placeholder {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+  color: var(--color-on-fill);
+  background: var(--color-accent);
+  font-weight: 600;
+}
+
 .details {
   display: flex;
   flex-direction: column;

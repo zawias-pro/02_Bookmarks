@@ -25,6 +25,37 @@
   gap: 0.5rem;
 }
 
+.settingsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.settingsButton:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+
+.settingsButton:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.settingsButton svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
 .sidebarTitle {
   margin: 0;
   font-size: 0.75rem;

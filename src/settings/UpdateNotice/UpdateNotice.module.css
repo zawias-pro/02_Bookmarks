@@ -1,0 +1,27 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--color-text);
+}
+
+.notice dl {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.notice dl div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.notice dt {
+  color: var(--color-text-secondary);
+}
+
+.notice dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

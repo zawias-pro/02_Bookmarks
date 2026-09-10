@@ -9,11 +9,9 @@ const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
   return (
     <li className={styles.item}>
       <a href={bookmark.link} target="_self" rel="noopener noreferrer">
-        <img
-          src={`https://favicon.vemetric.com/${new URL(bookmark.link).hostname}?size=64`}
-          alt={`Icon for ${bookmark.title}`}
-          aria-hidden
-        />
+        {bookmark.favicon
+          ? <img src={bookmark.favicon} alt="" aria-hidden />
+          : <span className={styles.placeholder} aria-hidden>{bookmark.title.slice(0, 1).toUpperCase()}</span>}
         <div className={styles.details}>
           <div className={styles.title}>{bookmark.title}</div>
           <div className={styles.link}>{bookmark.link}</div>

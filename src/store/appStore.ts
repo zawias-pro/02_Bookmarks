@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { pb } from '../persistence/pocketbase.ts'
-import { nextThemeSetting, readThemeSetting, resolveThemeSetting, themeMediaQuery, themeStorageKey, type Theme, type ThemeSetting } from '../theming/theme.ts'
+import { readThemeSetting, resolveThemeSetting, themeMediaQuery, themeStorageKey, type Theme, type ThemeSetting } from '../theming/theme.ts'
 import type { RecordModel } from 'pocketbase'
 
 type AuthUser = RecordModel & {
@@ -32,7 +32,7 @@ type AppStore = {
   setAuthChecked: (isChecked: boolean) => void
   setSelectedCategoryId: (categoryId: string | null) => void
   setRealtimeStatus: (status: RealtimeStatus) => void
-  cycleThemeSetting: () => void
+  setThemeSetting: (setting: ThemeSetting) => void
   syncSystemTheme: (theme: Theme) => void
 }
 
@@ -60,8 +60,7 @@ const useAppStore = create<AppStore>((set, get) => ({
   setAuthChecked: (isChecked) => set({ isAuthChecked: isChecked }),
   setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
   setRealtimeStatus: (status) => set({ realtimeStatus: status }),
-  cycleThemeSetting: () => {
-    const setting = nextThemeSetting(get().themeSetting)
+  setThemeSetting: (setting) => {
     localStorage.setItem(themeStorageKey, setting)
     set({ themeSetting: setting, theme: resolveThemeSetting(setting) })
   },
