@@ -16,7 +16,7 @@
 }
 
 .button:focus-visible {
-  outline: 3px solid rgb(0 113 227 / 0.4);
+  outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
 

@@ -9,6 +9,7 @@
     background: var(--color-sidebar-bg);
     backdrop-filter: saturate(180%) blur(20px);
     border-right: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
     min-width: 300px;
     width: 30%;
     height: 100%;
@@ -62,6 +63,7 @@
     height: auto;
     overflow-y: visible;
     border-right: none;
+    border-left: none;
     border-top: 1px solid var(--color-border);
   }
 }
