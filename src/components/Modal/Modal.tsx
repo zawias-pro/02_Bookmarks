@@ -23,7 +23,8 @@ const Modal = ({
 
     document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', handleKeyDown)
-    dialogRef.current?.focus()
+    const dialog = dialogRef.current
+    if (dialog && !dialog.contains(document.activeElement)) dialog.focus()
 
     return () => {
       document.body.style.overflow = ''
