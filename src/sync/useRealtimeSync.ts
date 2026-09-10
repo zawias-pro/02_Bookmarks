@@ -60,7 +60,10 @@ const useRealtimeSync = () => {
         const filter = { filter: `user = "${authUserId}"` };
          unsubscribeBookmarks = await pb.collection('bookmarks').subscribe('*', () => { void run(false); }, filter);
          unsubscribeCategories = await pb.collection('categories').subscribe('*', () => { void run(false); }, filter);
-         unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => { void run(false); });
+          unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => {
+            if (!cancelled) setRealtimeStatus('live');
+            void run(false);
+          });
         if (!cancelled) setRealtimeStatus('live');
       } catch (error) {
         if (!cancelled) { setRealtimeStatus('reconnecting'); toast.error(error instanceof Error ? error.message : 'Live sync connection failed.'); }
