@@ -1,6 +1,7 @@
 import { AddCategoryForm } from '../../categories/AddCategoryForm.tsx'
 import { CategoriesList } from '../../categories/CategoriesList/CategoriesList.tsx'
 import { Button } from '../../components/Button/Button.tsx'
+import { ThemeToggle } from '../../theming/ThemeToggle/ThemeToggle.tsx'
 import { useAppStore } from '../../store/appStore.ts'
 import styles from './Sidebar.module.css'
 
@@ -11,6 +12,7 @@ const Sidebar = () => {
     <aside className={styles.sidebar}>
       <header className={styles.navbar}>
         <h1 className={styles.brandTitle}>02_Bookmarks</h1>
+        <ThemeToggle />
       </header>
       <h2 className={styles.sidebarTitle}>Categories</h2>
       <CategoriesList />

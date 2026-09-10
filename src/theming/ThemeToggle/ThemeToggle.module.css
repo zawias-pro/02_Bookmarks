@@ -1,0 +1,30 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.toggle:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+
+.toggle:focus-visible {
+  outline: 3px solid rgb(0 113 227 / 0.4);
+  outline-offset: 1px;
+}
+
+.toggle svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}

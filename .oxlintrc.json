@@ -10,6 +10,7 @@
     "react/react-in-jsx-scope": "off",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
     "import/no-default-export": "error",
-    "func-style": ["error", "expression"]
+    "func-style": ["error", "expression"],
+    "eslint/no-nested-ternary": "error"
   }
 }

@@ -4,7 +4,7 @@
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: rgb(0 0 0 / 0.3);
+  background: var(--color-backdrop);
   z-index: 10;
 }
 
