@@ -1,9 +1,8 @@
 import { defineConfig, type Plugin } from 'vite'
-import { execFileSync } from 'node:child_process'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const appVersion = process.env.VITE_APP_VERSION ?? execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim()
+const appVersion = process.env.VITE_APP_VERSION ?? 'development'
 const versionPlugin = (): Plugin => ({
   name: 'app-version',
   generateBundle() {
