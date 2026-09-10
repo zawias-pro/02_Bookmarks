@@ -8,6 +8,7 @@ const notifyUpdateAvailable = (version: string) => {
 }
 
 const checkForUpdate = async () => {
+  if (import.meta.env.DEV) return appVersion
   const response = await fetch(`/version.json?check=${Date.now()}`, { cache: 'no-store' })
   if (!response.ok) throw new Error(`Version check failed with status ${response.status}.`)
   if (!response.headers.get('content-type')?.includes('application/json')) return appVersion
