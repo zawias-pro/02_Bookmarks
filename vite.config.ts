@@ -1,8 +1,12 @@
 import { defineConfig, type Plugin } from 'vite'
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const appVersion = process.env.VITE_APP_VERSION ?? 'development'
+const pwaSource = readFileSync(new URL('./src/pwa.ts', import.meta.url), 'utf8')
+const appVersionMatch = pwaSource.match(/const appVersion = '([^']+)'/)
+if (!appVersionMatch) throw new Error('appVersion is missing from src/pwa.ts.')
+const appVersion = appVersionMatch[1]
 const versionPlugin = (): Plugin => ({
   name: 'app-version',
   generateBundle() {
