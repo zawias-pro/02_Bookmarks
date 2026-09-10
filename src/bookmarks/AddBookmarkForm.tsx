@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { createId, db } from '../persistence/database.ts'
+import { toast } from 'sonner'
+import { db } from '../persistence/database.ts'
+import { createBookmark } from '../sync/sync.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
 import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
@@ -18,15 +20,12 @@ const AddBookmarkForm = () => {
   const addBookmark = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!title.trim() || !link.trim()) return
-    const now = new Date().toISOString()
-    await db.bookmarks.add({
-      id: createId(),
-      title: title.trim(),
-      link: link.trim(),
-      categoryId: categoryId || undefined,
-      order: await db.bookmarks.count() + 1,
-      updatedAt: now,
-    })
+    try {
+      await createBookmark({ title, link, categoryId: categoryId || undefined })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save bookmark.')
+    }
+    if (navigator.onLine === false) toast.info("You're offline. Saved on this device, will sync on reconnect.")
     setTitle('')
     setLink('')
     setCategoryId('')

@@ -139,9 +139,7 @@
         }
       }
     ],
-    "indexes": [
-      "CREATE UNIQUE INDEX idx_category_user_name ON categories (user, name)"
-    ],
+    "indexes": [],
     "listRule": "@request.auth.id != '' && user = @request.auth.id",
     "viewRule": "@request.auth.id != '' && user = @request.auth.id",
     "createRule": "@request.auth.id != '' && user = @request.auth.id",

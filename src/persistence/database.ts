@@ -1,10 +1,10 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalBookmark, LocalCategory, LocalProfile } from '../model/model.ts';
+import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;
   categories!: Table<LocalCategory, string>;
-  profiles!: Table<LocalProfile, string>;
+  outbox!: Table<OutboxMutation, string>;
 
   constructor() {
     super('bookmarks-offline');
@@ -21,6 +21,26 @@ class BookmarksDatabase extends Dexie {
       if (!bookmark.categoryId && bookmark.categoryIds?.[0]) bookmark.categoryId = bookmark.categoryIds[0];
       delete bookmark.categoryIds;
     }));
+    this.version(3).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt',
+      profiles: 'id',
+    }).upgrade((transaction) => transaction.table('categories').toCollection().modify((category: LocalCategory) => {
+      if (!category.updatedAt) category.updatedAt = category.createdAt;
+    }));
+    this.version(4).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+    });
+    this.version(5).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
+    });
   }
 }
 

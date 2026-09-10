@@ -7,13 +7,14 @@ import { applyTheme } from '../../theming/theme.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Toaster } from 'sonner';
 import { CategoryHeader } from '../../categories/CategoryHeader/CategoryHeader.tsx';
-import { SyncControls } from '../../sync/SyncControls/SyncControls.tsx';
+import { useRealtimeSync } from '../../sync/useRealtimeSync.ts';
 import styles from './App.module.css'
 
 const App = () => {
   const isAuthFormOpen = useAppStore((state) => state.isAuthFormOpen);
   const theme = useAppStore((state) => state.theme);
   useAuthValidation();
+  useRealtimeSync();
 
   useEffect(() => {
     applyTheme(theme);
@@ -25,9 +26,6 @@ const App = () => {
           <Sidebar />
       </div>
       <main className={styles.main}>
-        <div className={styles.sync}>
-          <SyncControls />
-        </div>
         <CategoryHeader />
         <BookmarkList />
       </main>

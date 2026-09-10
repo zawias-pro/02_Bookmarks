@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { createId, db } from '../persistence/database.ts'
+import { toast } from 'sonner'
+import { createCategory } from '../sync/sync.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
 import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
@@ -14,9 +15,12 @@ const AddCategoryForm = () => {
     event.preventDefault()
     const trimmedName = name.trim()
     if (!trimmedName) return
-    if (await db.categories.where('name').equalsIgnoreCase(trimmedName).first()) return
-
-    await db.categories.add({ id: createId(), name: trimmedName, createdAt: new Date().toISOString() })
+    try {
+      await createCategory(trimmedName)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save category.')
+    }
+    if (navigator.onLine === false) toast.info("You're offline. Saved on this device, will sync on reconnect.")
     setName('')
     setCategoryFormOpen(false)
   }

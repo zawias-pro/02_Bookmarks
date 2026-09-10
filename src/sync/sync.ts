@@ -1,105 +1,216 @@
 import type { RecordModel } from 'pocketbase';
-import { db } from '../persistence/database.ts';
+import { db, createId } from '../persistence/database.ts';
 import { pb } from '../persistence/pocketbase.ts';
-import type { LocalBookmark, LocalCategory } from '../model/model.ts';
+import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name'>;
 type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { categories?: string };
+type Collection = OutboxMutation['collection'];
+type Notice = { kind: 'info' | 'conflict'; message: string };
+type SyncCounts = { bookmarks: number; categories: number; pulled: number; pushed: number };
 
-const pushBookmarks = async () => {
-  if (!pb.authStore.isValid || !pb.authStore.record) {
-    throw new Error('Sign in to PocketBase before pushing.');
-  }
+const collectionFor = (collection: Collection) => pb.collection<RemoteBookmark | RemoteCategory>(collection);
+const isNotFound = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
+const userId = () => {
+  if (!pb.authStore.isValid || !pb.authStore.record) throw new Error('Sign in to PocketBase before syncing.');
+  return pb.authStore.record.id;
+};
+const localByRemote = async (collection: Collection, remoteId: string) =>
+  collection === 'bookmarks'
+    ? (await db.bookmarks.where('remoteId').equals(remoteId).first())
+    : (await db.categories.where('remoteId').equals(remoteId).first());
 
-  const localBookmarks = await db.bookmarks.toArray();
-  const localCategories = await db.categories.toArray();
-  const remoteCategories = await pb.collection<RemoteCategory>('categories').getFullList({
-    filter: `user = "${pb.authStore.record.id}"`,
+const enqueue = async (mutation: Omit<OutboxMutation, 'id' | 'createdAt'>) => {
+  const previous = await db.outbox.where('entityId').equals(mutation.entityId).toArray();
+  const createMutation = previous.find((item) => item.operation === 'create');
+  await db.outbox.bulkDelete(previous.map((item) => item.id));
+  await db.outbox.add({
+    ...mutation,
+    operation: createMutation ? 'create' : mutation.operation,
+    remoteId: createMutation ? undefined : mutation.remoteId,
+    baseRemoteUpdatedAt: createMutation ? undefined : mutation.baseRemoteUpdatedAt,
+    id: createId(),
+    createdAt: createMutation?.createdAt ?? new Date().toISOString(),
   });
-  const remoteBookmarks = await pb.collection<RemoteBookmark>('bookmarks').getFullList({
-    filter: `user = "${pb.authStore.record.id}"`,
+};
+
+const createCategory = async (name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Category name cannot be empty.');
+  const now = new Date().toISOString();
+  const category: LocalCategory = { id: createId(), name: trimmed, createdAt: now, updatedAt: now };
+  await db.transaction('rw', db.categories, db.outbox, async () => {
+    await db.categories.add(category);
+    await enqueue({ collection: 'categories', operation: 'create', entityId: category.id, snapshot: category });
   });
-  for (const bookmark of remoteBookmarks) {
-    await pb.collection<RemoteBookmark>('bookmarks').delete(bookmark.id);
-  }
+  void syncNow();
+  return category.id;
+};
 
-  for (const category of remoteCategories) {
-    await pb.collection<RemoteCategory>('categories').delete(category.id);
-  }
+const updateCategory = async (id: string, name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Category name cannot be empty.');
+  await db.transaction('rw', db.categories, db.outbox, async () => {
+    const category = await db.categories.get(id);
+    if (!category) throw new Error('Cannot update category because it does not exist locally.');
+    const updated = { ...category, name: trimmed, updatedAt: new Date().toISOString() };
+    await db.categories.put(updated);
+    await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: updated });
+  });
+  void syncNow();
+};
 
-  const categoryIds = new Map<string, string>();
-  for (const category of localCategories) {
-    const remote = await pb.collection<RemoteCategory>('categories').create({
-      name: category.name,
-      user: pb.authStore.record.id,
+const deleteCategory = async (id: string) => {
+  await db.transaction('rw', db.categories, db.bookmarks, db.outbox, async () => {
+    const category = await db.categories.get(id);
+    if (!category) throw new Error('Cannot delete category because it does not exist locally.');
+    await db.bookmarks.where('categoryId').equals(id).modify({ categoryId: undefined });
+    await db.categories.delete(id);
+    if (category.remoteId) await enqueue({ collection: 'categories', operation: 'delete', entityId: id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.updatedAt, snapshot: category });
+  });
+  void syncNow();
+};
+
+const createBookmark = async (input: { title: string; link: string; categoryId?: string }) => {
+  const title = input.title.trim();
+  const link = input.link.trim();
+  if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
+  const bookmark: LocalBookmark = { id: createId(), title, link, categoryId: input.categoryId, order: (await db.bookmarks.count()) + 1, updatedAt: new Date().toISOString() };
+  await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+    await db.bookmarks.add(bookmark);
+    await enqueue({ collection: 'bookmarks', operation: 'create', entityId: bookmark.id, snapshot: bookmark });
+  });
+  void syncNow();
+  return bookmark.id;
+};
+
+const updateBookmark = async (id: string, input: { title: string; link: string; categoryId?: string }) => {
+  const title = input.title.trim();
+  const link = input.link.trim();
+  if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
+  await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+    const bookmark = await db.bookmarks.get(id);
+    if (!bookmark) throw new Error('Cannot update bookmark because it does not exist locally.');
+    const updated = { ...bookmark, title, link, categoryId: input.categoryId, updatedAt: new Date().toISOString() };
+    await db.bookmarks.put(updated);
+    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+  });
+  void syncNow();
+};
+
+const deleteBookmark = async (id: string) => {
+  await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+    const bookmark = await db.bookmarks.get(id);
+    if (!bookmark) throw new Error('Cannot delete bookmark because it does not exist locally.');
+    await db.bookmarks.delete(id);
+    if (bookmark.remoteId) await enqueue({ collection: 'bookmarks', operation: 'delete', entityId: id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.updatedAt, snapshot: bookmark });
+  });
+  void syncNow();
+};
+
+const createRemote = async (mutation: OutboxMutation, snapshot: LocalBookmark | LocalCategory) => {
+  const data = mutation.collection === 'bookmarks'
+    ? { title: (snapshot as LocalBookmark).title, link: (snapshot as LocalBookmark).link, favicon: (snapshot as LocalBookmark).favicon, order: (snapshot as LocalBookmark).order, categories: (snapshot as LocalBookmark).categoryId ? (await db.categories.get((snapshot as LocalBookmark).categoryId!))?.remoteId : undefined, user: userId() }
+    : { name: (snapshot as LocalCategory).name, user: userId() };
+  return collectionFor(mutation.collection).create(data);
+};
+
+const conflictCopy = async (mutation: OutboxMutation, remote: RemoteBookmark | RemoteCategory | undefined, notice: (notice: Notice) => void) => {
+  const snapshot = mutation.snapshot;
+  const copy = { ...snapshot, id: createId(), remoteId: undefined, ...(mutation.collection === 'bookmarks' ? { title: `${(snapshot as LocalBookmark).title} (conflict copy)` } : { name: `${(snapshot as LocalCategory).name} (conflict copy)` }), updatedAt: new Date().toISOString() } as LocalBookmark | LocalCategory;
+  const created = await createRemote({ ...mutation, operation: 'create' }, copy);
+  const linked = { ...copy, remoteId: created.id, updatedAt: created.updated } as LocalBookmark | LocalCategory;
+  await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
+    if (mutation.collection === 'bookmarks') await db.bookmarks.add(linked as LocalBookmark);
+    else await db.categories.add(linked as LocalCategory);
+    await db.outbox.delete(mutation.id);
+  });
+  notice({ kind: 'conflict', message: `${mutation.collection === 'bookmarks' ? 'Bookmark' : 'Category'} conflict preserved as a copy.` });
+  return remote;
+};
+
+const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice) => void) => {
+  if (mutation.operation === 'create') {
+    const remote = await createRemote(mutation, mutation.snapshot);
+    await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
+      if (mutation.collection === 'bookmarks') await db.bookmarks.update(mutation.entityId, { remoteId: remote.id, updatedAt: remote.updated });
+      else await db.categories.update(mutation.entityId, { remoteId: remote.id, updatedAt: remote.updated });
+      await db.outbox.delete(mutation.id);
     });
-    categoryIds.set(category.id, remote.id);
+    return;
   }
-
-  for (const bookmark of localBookmarks) {
-    const categoryId = bookmark.categoryId ? categoryIds.get(bookmark.categoryId) : undefined;
-    if (bookmark.categoryId && !categoryId) {
-      throw new Error(`Bookmark "${bookmark.title}" refers to a category that does not exist locally.`);
+  let remote: RemoteBookmark | RemoteCategory;
+  try {
+    remote = await collectionFor(mutation.collection).getOne(mutation.remoteId!);
+  } catch (error) {
+    if (mutation.operation === 'delete' && isNotFound(error)) { await db.outbox.delete(mutation.id); return; }
+    if (isNotFound(error)) { await conflictCopy(mutation, undefined, notice); return; }
+    throw error;
+  }
+  if (remote.updated !== mutation.baseRemoteUpdatedAt) { await conflictCopy(mutation, remote, notice); return; }
+  if (mutation.operation === 'delete') await collectionFor(mutation.collection).delete(mutation.remoteId!);
+  const updatedRemote = mutation.operation === 'delete' ? undefined : await collectionFor(mutation.collection).update(mutation.remoteId!, mutation.collection === 'bookmarks'
+    ? { title: (mutation.snapshot as LocalBookmark).title, link: (mutation.snapshot as LocalBookmark).link, favicon: (mutation.snapshot as LocalBookmark).favicon, order: (mutation.snapshot as LocalBookmark).order, categories: (mutation.snapshot as LocalBookmark).categoryId ? (await db.categories.get((mutation.snapshot as LocalBookmark).categoryId!))?.remoteId : null }
+    : { name: (mutation.snapshot as LocalCategory).name });
+  await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
+    if (mutation.collection === 'bookmarks') {
+      if (mutation.operation === 'delete') await db.bookmarks.delete(mutation.entityId);
+      else await db.bookmarks.update(mutation.entityId, { updatedAt: updatedRemote?.updated ?? remote.updated });
+    } else {
+      if (mutation.operation === 'delete') await db.categories.delete(mutation.entityId);
+      else await db.categories.update(mutation.entityId, { updatedAt: updatedRemote?.updated ?? remote.updated });
     }
-
-    const data = {
-      title: bookmark.title,
-      link: bookmark.link,
-      favicon: bookmark.favicon,
-      order: bookmark.order,
-      categories: categoryId,
-      user: pb.authStore.record.id,
-    };
-
-    const remote = await pb.collection<RemoteBookmark>('bookmarks').create(data);
-
-    await db.bookmarks.update(bookmark.id, { remoteId: remote.id, updatedAt: remote.updated });
-  }
-
-  return { bookmarks: localBookmarks.length, categories: localCategories.length };
+    await db.outbox.delete(mutation.id);
+  });
 };
 
-const pullBookmarks = async () => {
-  if (!pb.authStore.isValid || !pb.authStore.record) {
-    throw new Error('Sign in to PocketBase before pulling.');
+const pull = async () => {
+  const uid = userId();
+  const [remoteBookmarks, remoteCategories, pending] = await Promise.all([
+    pb.collection<RemoteBookmark>('bookmarks').getFullList({ filter: `user = "${uid}"` }),
+    pb.collection<RemoteCategory>('categories').getFullList({ filter: `user = "${uid}"` }),
+    db.outbox.toArray(),
+  ]);
+  const pendingRemoteIds = new Set(pending.map((item) => item.remoteId).filter((id): id is string => Boolean(id)));
+  for (const remote of remoteCategories) {
+    if (pendingRemoteIds.has(remote.id)) continue;
+    const local = await localByRemote('categories', remote.id);
+    if (local) await db.categories.update(local.id, { name: remote.name, updatedAt: remote.updated });
+    else await db.categories.put({ id: remote.id, remoteId: remote.id, name: remote.name, createdAt: remote.created, updatedAt: remote.updated });
   }
-
-  const remoteBookmarks = await pb.collection<RemoteBookmark>('bookmarks').getFullList({
-    filter: `user = "${pb.authStore.record.id}"`,
-    sort: 'order',
-  });
-  const remoteCategories = await pb.collection<RemoteCategory>('categories').getFullList({
-    filter: `user = "${pb.authStore.record.id}"`,
-    sort: 'name',
-  });
-  const categoryIds = new Set(remoteCategories.map((category) => category.id));
-  for (const bookmark of remoteBookmarks) {
-    if (bookmark.categories && !categoryIds.has(bookmark.categories)) {
-      throw new Error(`Remote bookmark "${bookmark.title}" refers to a category that was not returned by the server.`);
-    }
+  for (const remote of remoteBookmarks) {
+    if (pendingRemoteIds.has(remote.id)) continue;
+    const category = remote.categories ? await localByRemote('categories', remote.categories) : undefined;
+    const local = await localByRemote('bookmarks', remote.id);
+    const value = { title: remote.title, link: remote.link, favicon: remote.favicon, order: remote.order, categoryId: category?.id, updatedAt: remote.updated };
+    if (local) await db.bookmarks.update(local.id, value);
+    else await db.bookmarks.put({ id: remote.id, remoteId: remote.id, ...value });
   }
-
-  await db.transaction('rw', db.bookmarks, db.categories, async () => {
-    await db.categories.clear();
-    await db.bookmarks.clear();
-    await db.categories.bulkAdd(remoteCategories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      createdAt: category.created,
-    })));
-    await db.bookmarks.bulkAdd(remoteBookmarks.map((bookmark) => ({
-      id: bookmark.id,
-      remoteId: bookmark.id,
-      title: bookmark.title,
-      link: bookmark.link,
-      favicon: bookmark.favicon,
-      order: bookmark.order,
-      categoryId: bookmark.categories,
-      updatedAt: bookmark.updated,
-    })));
-  });
-
-  return { bookmarks: remoteBookmarks.length, categories: remoteCategories.length };
+  const remoteCategoryIds = new Set(remoteCategories.map((category) => category.id));
+  for (const local of await db.categories.toArray()) {
+    if (!local.remoteId || pendingRemoteIds.has(local.remoteId) || remoteCategoryIds.has(local.remoteId)) continue;
+    await db.transaction('rw', db.categories, db.bookmarks, async () => {
+      await db.bookmarks.where('categoryId').equals(local.id).modify({ categoryId: undefined });
+      await db.categories.delete(local.id);
+    });
+  }
+  const remoteBookmarkIds = new Set(remoteBookmarks.map((bookmark) => bookmark.id));
+  for (const local of await db.bookmarks.toArray()) {
+    if (local.remoteId && !pendingRemoteIds.has(local.remoteId) && !remoteBookmarkIds.has(local.remoteId)) await db.bookmarks.delete(local.id);
+  }
+  return { pulled: remoteBookmarks.length + remoteCategories.length };
 };
 
-export { pullBookmarks, pushBookmarks };
+let activeSync: Promise<SyncCounts> | undefined;
+const runWorker = async (): Promise<SyncCounts> => {
+  if (!pb.authStore.isValid || navigator.onLine === false) return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: 0, pushed: 0 };
+  let pushed = 0;
+  const notices: Notice[] = [];
+  for (const mutation of (await db.outbox.orderBy('createdAt').toArray())) { await processMutation(mutation, (notice) => notices.push(notice)); pushed += 1; }
+  const pulled = await pull();
+  for (const notice of notices) window.dispatchEvent(new CustomEvent('sync-notice', { detail: notice }));
+  return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: pulled.pulled, pushed };
+};
+const syncNow = () => { activeSync ??= runWorker().finally(() => { activeSync = undefined; }); return activeSync; };
+
+export { createBookmark, createCategory, deleteBookmark, deleteCategory, syncNow, updateBookmark, updateCategory };

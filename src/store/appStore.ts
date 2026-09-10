@@ -8,8 +8,11 @@ type AuthUser = RecordModel & {
   username?: string
 }
 
+type RealtimeStatus = 'off' | 'connecting' | 'live' | 'reconnecting'
+
 type AppStore = {
   isAuthFormOpen: boolean
+  isSyncModalOpen: boolean
   isCategoryFormOpen: boolean
   isCategoryEditFormOpen: boolean
   isBookmarkFormOpen: boolean
@@ -17,15 +20,18 @@ type AppStore = {
   authUser: AuthUser | null
   isAuthChecked: boolean
   selectedCategoryId: string | null
+  realtimeStatus: RealtimeStatus
   themeSetting: ThemeSetting
   theme: Theme
   setAuthFormOpen: (isOpen: boolean) => void
+  setSyncModalOpen: (isOpen: boolean) => void
   setCategoryFormOpen: (isOpen: boolean) => void
   setCategoryEditFormOpen: (isOpen: boolean) => void
   setBookmarkFormOpen: (isOpen: boolean) => void
   setEditingBookmarkId: (bookmarkId: string | null) => void
   setAuthChecked: (isChecked: boolean) => void
   setSelectedCategoryId: (categoryId: string | null) => void
+  setRealtimeStatus: (status: RealtimeStatus) => void
   cycleThemeSetting: () => void
   syncSystemTheme: (theme: Theme) => void
 }
@@ -34,6 +40,7 @@ const initialThemeSetting = readThemeSetting()
 
 const useAppStore = create<AppStore>((set, get) => ({
   isAuthFormOpen: false,
+  isSyncModalOpen: false,
   isCategoryFormOpen: false,
   isCategoryEditFormOpen: false,
   isBookmarkFormOpen: false,
@@ -41,15 +48,18 @@ const useAppStore = create<AppStore>((set, get) => ({
   authUser: pb.authStore.record as AuthUser | null,
   isAuthChecked: false,
   selectedCategoryId: null,
+  realtimeStatus: 'off',
   themeSetting: initialThemeSetting,
   theme: resolveThemeSetting(initialThemeSetting),
   setAuthFormOpen: (isOpen) => set({ isAuthFormOpen: isOpen }),
+  setSyncModalOpen: (isOpen) => set({ isSyncModalOpen: isOpen }),
   setCategoryFormOpen: (isOpen) => set({ isCategoryFormOpen: isOpen }),
   setCategoryEditFormOpen: (isOpen) => set({ isCategoryEditFormOpen: isOpen }),
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),
   setEditingBookmarkId: (bookmarkId) => set({ editingBookmarkId: bookmarkId }),
   setAuthChecked: (isChecked) => set({ isAuthChecked: isChecked }),
   setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
+  setRealtimeStatus: (status) => set({ realtimeStatus: status }),
   cycleThemeSetting: () => {
     const setting = nextThemeSetting(get().themeSetting)
     localStorage.setItem(themeStorageKey, setting)
@@ -69,3 +79,4 @@ pb.authStore.onChange((_token, record) => {
 }, true)
 
 export { useAppStore }
+export type { RealtimeStatus }

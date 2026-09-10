@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { toast } from 'sonner'
 import { Modal } from '../components/Modal/Modal.tsx'
 import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
 import { db } from '../persistence/database.ts'
+import { deleteBookmark, updateBookmark } from '../sync/sync.ts'
 import { useAppStore } from '../store/appStore.ts'
 
 const EditBookmarkForm = () => {
@@ -24,17 +26,27 @@ const EditBookmarkForm = () => {
     setCategoryId(bookmark?.categoryId ?? '')
   }, [bookmark])
 
-  const updateBookmark = async (event: FormEvent<HTMLFormElement>) => {
+  const updateBookmarkEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!bookmark || !title.trim() || !link.trim()) return
-    await db.bookmarks.update(bookmark.id, { title: title.trim(), link: link.trim(), categoryId: categoryId || undefined, updatedAt: new Date().toISOString() })
+    try {
+      await updateBookmark(bookmark.id, { title, link, categoryId: categoryId || undefined })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save bookmark.')
+    }
+    if (navigator.onLine === false) toast.info("You're offline. Saved on this device, will sync on reconnect.")
     setEditingBookmarkId(null)
   }
 
-  const deleteBookmark = async () => {
+  const removeBookmark = async () => {
     if (!bookmark) throw new Error('Cannot delete bookmark because no bookmark is selected.')
     if (!window.confirm(`Delete bookmark "${bookmark.title}"?`)) return
-    await db.bookmarks.delete(bookmark.id)
+    try {
+      await deleteBookmark(bookmark.id)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete bookmark.')
+    }
+    if (navigator.onLine === false) toast.info("You're offline. Deleted on this device, will sync on reconnect.")
     setEditingBookmarkId(null)
   }
 
@@ -43,7 +55,7 @@ const EditBookmarkForm = () => {
   return (
     <Modal titleId="edit-bookmark-title" onClose={() => setEditingBookmarkId(null)}>
       <h2 id="edit-bookmark-title">Edit bookmark</h2>
-      <form onSubmit={updateBookmark}>
+      <form onSubmit={updateBookmarkEntry}>
         <Field label="Title" htmlFor="edit-bookmark-title-input">
           <input id="edit-bookmark-title-input" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
         </Field>
@@ -57,7 +69,7 @@ const EditBookmarkForm = () => {
           </select>
         </Field>
         <Button type="submit">Save</Button>
-        <Button type="button" variant="dangerGhost" onClick={() => void deleteBookmark()}>Delete bookmark</Button>
+        <Button type="button" variant="dangerGhost" onClick={() => void removeBookmark()}>Delete bookmark</Button>
       </form>
     </Modal>
   )

@@ -11,14 +11,19 @@ export interface LocalBookmark {
 
 export interface LocalCategory {
   id: string;
+  remoteId?: string;
   name: string;
   createdAt: string;
+  updatedAt: string;
 }
 
-export interface LocalProfile {
+export interface OutboxMutation {
   id: string;
-  email?: string;
-  name?: string;
+  collection: 'bookmarks' | 'categories';
+  operation: 'create' | 'update' | 'delete';
+  entityId: string;
+  remoteId?: string;
+  baseRemoteUpdatedAt?: string;
+  snapshot: LocalBookmark | LocalCategory;
+  createdAt: string;
 }
-
-export type SyncStatus = 'local' | 'synced' | 'changed';
