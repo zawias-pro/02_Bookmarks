@@ -1,7 +1,7 @@
 let serviceWorkerRegistration: ServiceWorkerRegistration | undefined
 
 const appUpdateEvent = 'app-update-available'
-const appVersion = '1'
+const appVersion = '2'
 
 const notifyUpdateAvailable = (version: string) => {
   window.dispatchEvent(new CustomEvent(appUpdateEvent, { detail: { version } }))
