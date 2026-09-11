@@ -38,8 +38,10 @@ const registerAppServiceWorker = () => {
   })
 }
 
-const updateApp = () => {
-  serviceWorkerRegistration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
+const updateApp = async () => {
+  const registration = serviceWorkerRegistration ?? await navigator.serviceWorker.getRegistration()
+  await registration?.update()
+  registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
   window.location.reload()
 }
 
