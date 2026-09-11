@@ -39,6 +39,14 @@ const fetchFavicon = async (link: string) => {
   });
 };
 
+const tryFetchFavicon = async (link: string) => {
+  try {
+    return await fetchFavicon(link);
+  } catch {
+    return undefined;
+  }
+};
+
 const dataUrlToFile = async (dataUrl: string) => {
   const response = await fetch(dataUrl);
   const blob = await response.blob();
@@ -118,7 +126,7 @@ const createBookmark = async (input: { title: string; link: string; categoryId?:
   const title = input.title.trim();
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
-  const favicon = navigator.onLine === false ? undefined : await fetchFavicon(link);
+  const favicon = navigator.onLine === false ? undefined : await tryFetchFavicon(link);
   const bookmark: LocalBookmark = { id: createId(), title, link, favicon, categoryId: input.categoryId, order: (await db.bookmarks.count()) + 1, updatedAt: new Date().toISOString() };
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     await db.bookmarks.add(bookmark);
@@ -133,21 +141,19 @@ const reloadFavicons = async () => {
   if (navigator.onLine === false) throw new Error('Connect to the internet before loading bookmark icons.');
   await syncNow();
   const bookmarks = await db.bookmarks.toArray();
+  let reloaded = 0;
   for (const bookmark of bookmarks) {
-    let favicon: string;
-    try {
-      favicon = await fetchFavicon(bookmark.link);
-    } catch (error) {
-      throw new Error(`Could not load the icon for "${bookmark.title}".`, { cause: error });
-    }
+    const favicon = await tryFetchFavicon(bookmark.link);
+    if (!favicon) continue;
     const updated = { ...bookmark, favicon, updatedAt: new Date().toISOString() };
     await db.transaction('rw', db.bookmarks, db.outbox, async () => {
       await db.bookmarks.put(updated);
       await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
     });
+    reloaded += 1;
   }
-  if (bookmarks.length > 0) await syncNow();
-  return bookmarks.length;
+  if (reloaded > 0) await syncNow();
+  return reloaded;
 };
 
 const updateBookmark = async (id: string, input: { title: string; link: string; categoryId?: string }) => {
