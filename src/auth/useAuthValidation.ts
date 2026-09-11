@@ -7,7 +7,7 @@ const useAuthValidation = () => {
 
   useEffect(() => {
     const validateAuth = async () => {
-      if (!pb.authStore.isValid || !pb.authStore.record) {
+      if (!pb.authStore.record) {
         setAuthChecked(true);
         return;
       }

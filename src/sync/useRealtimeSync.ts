@@ -39,11 +39,12 @@ const useRealtimeSync = () => {
         retryAttempt = 0;
         retryNoticeShown = false;
         return true;
-      } catch {
+      } catch (error) {
         if (cancelled) return;
         if (showError && !retryNoticeShown) {
           retryNoticeShown = true;
-          toast.warning('Sync is temporarily unavailable. Retrying automatically; local changes are safe.');
+          const reason = error instanceof Error ? ` ${error.message}` : '';
+          toast.warning(`Sync is temporarily unavailable.${reason} Retrying automatically; local changes are safe.`);
         }
         scheduleRetry();
         return false;
@@ -53,6 +54,7 @@ const useRealtimeSync = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') void run();
     };
+    const handlePageShow = () => void run();
     const handleNotice = (event: Event) => {
       const notice = (event as CustomEvent<{ kind: 'info' | 'conflict'; message: string }>).detail;
       if (notice.kind === 'conflict') toast.warning(notice.message);
@@ -77,6 +79,7 @@ const useRealtimeSync = () => {
     };
     pb.realtime.onDisconnect = () => { if (!cancelled) setRealtimeStatus('reconnecting'); };
     window.addEventListener('online', handleOnline);
+    window.addEventListener('pageshow', handlePageShow);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('sync-notice', handleNotice);
     void start();
@@ -84,6 +87,7 @@ const useRealtimeSync = () => {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('pageshow', handlePageShow);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('sync-notice', handleNotice);
       pb.realtime.onDisconnect = undefined;

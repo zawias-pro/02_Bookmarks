@@ -300,7 +300,10 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
   }
 };
 const runWorker = async (): Promise<SyncCounts> => {
-  if (!pb.authStore.isValid || navigator.onLine === false) return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: 0, pushed: 0 };
+  if (!pb.authStore.isValid) {
+    if (pb.authStore.record) pb.authStore.clear();
+    return { bookmarks: await db.bookmarks.count(), categories: await db.categories.count(), pulled: 0, pushed: 0 };
+  }
   let pushed = 0;
   const notices: Notice[] = [];
   for (const mutation of (await db.outbox.orderBy('createdAt').toArray())) { await processMutation(mutation, (notice) => notices.push(notice)); pushed += 1; }
