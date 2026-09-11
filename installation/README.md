@@ -1,8 +1,9 @@
 # Self-hosting 02_Bookmarks
 
 This setup uses Podman, `podman-compose`, and an existing Caddy installation.
-The application containers serve the frontend and PocketBase on loopback ports;
-Caddy provides the public HTTPS endpoint and proxies both services.
+The application containers serve the frontend and PocketBase on the shared
+Podman network; Caddy provides the public HTTPS endpoint and proxies both
+services.
 
 ## Requirements
 
@@ -55,15 +56,15 @@ Configure Caddy for the domain that points to this server:
 ```caddyfile
 bookmarks.example.com {
     handle /api/* {
-        reverse_proxy 127.0.0.1:8090
+        reverse_proxy 02-bookmarks_pocketbase_1:8090
     }
 
     handle /_/* {
-        reverse_proxy 127.0.0.1:8090
+        reverse_proxy 02-bookmarks_pocketbase_1:8090
     }
 
     handle {
-        reverse_proxy 127.0.0.1:8080
+        reverse_proxy 02-bookmarks_frontend_1:8080
     }
 }
 ```
@@ -71,10 +72,8 @@ bookmarks.example.com {
 Reload Caddy, then open `https://bookmarks.example.com`. The PocketBase
 administrator interface is available at `https://bookmarks.example.com/_/`.
 
-The containers bind only to `127.0.0.1` on the unprivileged ports `8080` and
-`8090`, so Caddy is the only public entry point. If either host port is already
-in use, change the port on the left side of the mapping in `compose.yml` and
-update the matching Caddy upstream.
+The containers do not publish host ports. Caddy must be connected to the same
+Podman network as the application and is the only public entry point.
 
 ## Operations
 
