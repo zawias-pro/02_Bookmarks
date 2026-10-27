@@ -2,7 +2,7 @@ name: 02-bookmarks
 
 services:
   pocketbase:
-    image: ghcr.io/zawias-pro/02-bookmarks-pocketbase:${BOOKMARKS_VERSION:?Set BOOKMARKS_VERSION to a release tag, for example 1.2.3}
+    image: ghcr.io/zawias-pro/02-bookmarks-pocketbase:${BOOKMARKS_VERSION:?}
     restart: unless-stopped
     expose:
       - "8090"
@@ -15,7 +15,7 @@ services:
       retries: 5
 
   frontend:
-    image: ghcr.io/zawias-pro/02-bookmarks-frontend:${BOOKMARKS_VERSION:?Set BOOKMARKS_VERSION to a release tag, for example 1.2.3}
+    image: ghcr.io/zawias-pro/02-bookmarks-frontend:${BOOKMARKS_VERSION:?}
     depends_on:
       pocketbase:
         condition: service_healthy

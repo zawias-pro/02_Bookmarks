@@ -12,7 +12,7 @@
 ## Runtime Setup
 
 - `pb_data/` is local PocketBase runtime data and is intentionally ignored; schema changes belong in `pb_migrations/` and `pb_schema.json`.
-- Production `installation/compose.yml` pulls the published GHCR images; `installation/compose.build.yml` builds the same tags locally. PocketBase migrations are baked into the PocketBase image, so production no longer mounts `pb_migrations`.
+- Production `installation/compose.yml` pulls the published GHCR images. PocketBase migrations are baked into the PocketBase image, so production no longer mounts `pb_migrations`.
 - There are no automated tests; lint and build are the available checks. `.github/workflows/publish.yml` runs `npm run lint` and publishes both `linux/amd64` container images to GHCR when a semantic version tag such as `1.2.3` is pushed; image tags are exactly that version and there are no floating tags.
 
 ## Architecture

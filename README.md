@@ -5,7 +5,7 @@
 Prebuilt `linux/amd64` images are published to the GitHub Container Registry, so
 a site only needs a Compose file and a data directory.
 See [`installation/README.md`](installation/README.md) for the Podman, Compose,
-and host Caddy deployment instructions.
+and reverse proxy deployment instructions.
 
 ## Development
 
