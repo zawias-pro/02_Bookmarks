@@ -71,8 +71,8 @@
       },
       {
         "system": false,
-        "id": "field_categories",
-        "name": "categories",
+        "id": "field_tags",
+        "name": "tags",
         "type": "relation",
         "required": false,
         "presentable": false,
@@ -81,7 +81,7 @@
           "collectionId": "categories_coll_01",
           "cascadeDelete": false,
           "minSelect": null,
-          "maxSelect": 1,
+          "maxSelect": 99,
           "displayFields": null
         }
       },
@@ -113,7 +113,7 @@
   },
   {
     "id": "categories_coll_01",
-    "name": "categories",
+    "name": "tags",
     "type": "base",
     "system": false,
     "schema": [

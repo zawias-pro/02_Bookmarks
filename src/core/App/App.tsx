@@ -6,7 +6,7 @@ import { Sidebar } from '../Sidebar/Sidebar.tsx';
 import { applyTheme } from '../../theming/theme.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Toaster } from 'sonner';
-import { CategoryHeader } from '../../categories/CategoryHeader/CategoryHeader.tsx';
+import { TagHeader } from '../../tags/TagHeader/TagHeader.tsx';
 import { useRealtimeSync } from '../../sync/useRealtimeSync.ts';
 import styles from './App.module.css'
 
@@ -26,7 +26,7 @@ const App = () => {
           <Sidebar />
       </div>
       <main className={styles.main}>
-        <CategoryHeader />
+        <TagHeader />
         <BookmarkList />
       </main>
       {isAuthFormOpen && <AuthForm />}

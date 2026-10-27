@@ -7,6 +7,7 @@ import { Button } from '../components/Button/Button.tsx'
 import { db } from '../persistence/database.ts'
 import { deleteBookmark, updateBookmark } from '../sync/sync.ts'
 import { useAppStore } from '../store/appStore.ts'
+import { TagPicker } from './TagPicker/TagPicker.tsx'
 
 const EditBookmarkForm = () => {
   const editingBookmarkId = useAppStore((state) => state.editingBookmarkId)
@@ -17,20 +18,19 @@ const EditBookmarkForm = () => {
   )
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), []) ?? []
+  const [tagIds, setTagIds] = useState<string[]>([])
 
   useEffect(() => {
     setTitle(bookmark?.title ?? '')
     setLink(bookmark?.link ?? '')
-    setCategoryId(bookmark?.categoryId ?? '')
+    setTagIds(bookmark?.tagIds ?? [])
   }, [bookmark])
 
   const updateBookmarkEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!bookmark || !title.trim() || !link.trim()) return
     try {
-      await updateBookmark(bookmark.id, { title, link, categoryId: categoryId || undefined })
+      await updateBookmark(bookmark.id, { title, link, tagIds })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save bookmark.')
     }
@@ -62,12 +62,7 @@ const EditBookmarkForm = () => {
         <Field label="URL" htmlFor="edit-bookmark-link-input">
           <input id="edit-bookmark-link-input" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
         </Field>
-        <Field label="Category" htmlFor="edit-bookmark-category">
-          <select id="edit-bookmark-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-            <option value="">No category</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-          </select>
-        </Field>
+        <TagPicker selectedTagIds={tagIds} onChange={setTagIds} />
         <Button type="submit">Save</Button>
         <Button type="button" variant="dangerGhost" onClick={() => void removeBookmark()}>Delete bookmark</Button>
       </form>

@@ -5,11 +5,11 @@ export interface LocalBookmark {
   link: string;
   favicon?: string;
   order: number;
-  categoryId?: string;
+  tagIds: string[];
   updatedAt: string;
 }
 
-export interface LocalCategory {
+export interface LocalTag {
   id: string;
   remoteId?: string;
   name: string;
@@ -19,11 +19,11 @@ export interface LocalCategory {
 
 export interface OutboxMutation {
   id: string;
-  collection: 'bookmarks' | 'categories';
+  collection: 'bookmarks' | 'tags';
   operation: 'create' | 'update' | 'delete';
   entityId: string;
   remoteId?: string;
   baseRemoteUpdatedAt?: string;
-  snapshot: LocalBookmark | LocalCategory;
+  snapshot: LocalBookmark | LocalTag;
   createdAt: string;
 }

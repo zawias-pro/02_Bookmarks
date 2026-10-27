@@ -1,5 +1,5 @@
-import { AddCategoryForm } from '../../categories/AddCategoryForm.tsx'
-import { CategoriesList } from '../../categories/CategoriesList/CategoriesList.tsx'
+import { AddTagForm } from '../../tags/AddTagForm.tsx'
+import { TagsList } from '../../tags/TagsList/TagsList.tsx'
 import { Button } from '../../components/Button/Button.tsx'
 import { SyncButton } from '../../sync/SyncButton/SyncButton.tsx'
 import { SyncModal } from '../../sync/SyncModal/SyncModal.tsx'
@@ -9,7 +9,7 @@ import { useState } from 'react'
 import styles from './Sidebar.module.css'
 
 const Sidebar = () => {
-  const setCategoryFormOpen = useAppStore((state) => state.setCategoryFormOpen)
+  const setTagFormOpen = useAppStore((state) => state.setTagFormOpen)
   const [isSettingsOpen, setSettingsOpen] = useState(false)
 
   return (
@@ -26,10 +26,10 @@ const Sidebar = () => {
           </button>
         </div>
       </header>
-      <h2 className={styles.sidebarTitle}>Categories</h2>
-      <CategoriesList />
-      <Button onClick={() => setCategoryFormOpen(true)}>Add category</Button>
-      <AddCategoryForm />
+      <h2 className={styles.sidebarTitle}>Tags</h2>
+      <TagsList />
+      <Button onClick={() => setTagFormOpen(true)}>Add tag</Button>
+      <AddTagForm />
       <SyncModal />
       {isSettingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </aside>

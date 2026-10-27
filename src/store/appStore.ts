@@ -10,27 +10,29 @@ type AuthUser = RecordModel & {
 
 type RealtimeStatus = 'off' | 'connecting' | 'live' | 'reconnecting'
 
+type BookmarkFilter = { kind: 'all' } | { kind: 'untagged' } | { kind: 'tag'; tagId: string }
+
 type AppStore = {
   isAuthFormOpen: boolean
   isSyncModalOpen: boolean
-  isCategoryFormOpen: boolean
-  isCategoryEditFormOpen: boolean
+  isTagFormOpen: boolean
+  isTagEditFormOpen: boolean
   isBookmarkFormOpen: boolean
   editingBookmarkId: string | null
   authUser: AuthUser | null
   isAuthChecked: boolean
-  selectedCategoryId: string | null
+  selectedFilter: BookmarkFilter
   realtimeStatus: RealtimeStatus
   themeSetting: ThemeSetting
   theme: Theme
   setAuthFormOpen: (isOpen: boolean) => void
   setSyncModalOpen: (isOpen: boolean) => void
-  setCategoryFormOpen: (isOpen: boolean) => void
-  setCategoryEditFormOpen: (isOpen: boolean) => void
+  setTagFormOpen: (isOpen: boolean) => void
+  setTagEditFormOpen: (isOpen: boolean) => void
   setBookmarkFormOpen: (isOpen: boolean) => void
   setEditingBookmarkId: (bookmarkId: string | null) => void
   setAuthChecked: (isChecked: boolean) => void
-  setSelectedCategoryId: (categoryId: string | null) => void
+  setFilter: (filter: BookmarkFilter) => void
   setRealtimeStatus: (status: RealtimeStatus) => void
   setThemeSetting: (setting: ThemeSetting) => void
   syncSystemTheme: (theme: Theme) => void
@@ -41,24 +43,24 @@ const initialThemeSetting = readThemeSetting()
 const useAppStore = create<AppStore>((set, get) => ({
   isAuthFormOpen: false,
   isSyncModalOpen: false,
-  isCategoryFormOpen: false,
-  isCategoryEditFormOpen: false,
+  isTagFormOpen: false,
+  isTagEditFormOpen: false,
   isBookmarkFormOpen: false,
   editingBookmarkId: null,
   authUser: pb.authStore.record as AuthUser | null,
   isAuthChecked: false,
-  selectedCategoryId: null,
+  selectedFilter: { kind: 'all' },
   realtimeStatus: 'off',
   themeSetting: initialThemeSetting,
   theme: resolveThemeSetting(initialThemeSetting),
   setAuthFormOpen: (isOpen) => set({ isAuthFormOpen: isOpen }),
   setSyncModalOpen: (isOpen) => set({ isSyncModalOpen: isOpen }),
-  setCategoryFormOpen: (isOpen) => set({ isCategoryFormOpen: isOpen }),
-  setCategoryEditFormOpen: (isOpen) => set({ isCategoryEditFormOpen: isOpen }),
+  setTagFormOpen: (isOpen) => set({ isTagFormOpen: isOpen }),
+  setTagEditFormOpen: (isOpen) => set({ isTagEditFormOpen: isOpen }),
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),
   setEditingBookmarkId: (bookmarkId) => set({ editingBookmarkId: bookmarkId }),
   setAuthChecked: (isChecked) => set({ isAuthChecked: isChecked }),
-  setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
+  setFilter: (filter) => set({ selectedFilter: filter }),
   setRealtimeStatus: (status) => set({ realtimeStatus: status }),
   setThemeSetting: (setting) => {
     localStorage.setItem(themeStorageKey, setting)
@@ -78,4 +80,4 @@ pb.authStore.onChange((_token, record) => {
 }, true)
 
 export { useAppStore }
-export type { RealtimeStatus }
+export type { BookmarkFilter, RealtimeStatus }

@@ -2,27 +2,37 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../persistence/database.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Button } from '../../components/Button/Button.tsx';
+import type { LocalTag } from '../../model/model.ts';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
 import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
 import styles from './BookmarkList.module.css';
 
 const BookmarkList = () => {
-  const categoryId = useAppStore((state) => state.selectedCategoryId);
+  const selectedFilter = useAppStore((state) => state.selectedFilter);
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen);
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
+  const tags = useLiveQuery(() => db.tags.toArray(), []) ?? [];
+  const tagsById = new Map(tags.map((tag) => [tag.id, tag]));
   const bookmarks = useLiveQuery(async () => {
     const items = await db.bookmarks.orderBy('order').toArray();
-    return categoryId === null ? items.filter((bookmark) => !bookmark.categoryId) : items.filter((bookmark) => bookmark.categoryId === categoryId);
-  }, [categoryId]) ?? [];
+    if (selectedFilter.kind === 'all') return items;
+    if (selectedFilter.kind === 'untagged') return items.filter((bookmark) => bookmark.tagIds.length === 0);
+    return items.filter((bookmark) => bookmark.tagIds.includes(selectedFilter.tagId));
+  }, [selectedFilter]) ?? [];
+  const emptyMessage = selectedFilter.kind === 'all' ? 'No bookmarks yet.' : 'No bookmarks match this filter.';
   return (
     <div>
       <ul className={styles.list}>
         {bookmarks.map((bookmark) => (
-          <BookmarkItem key={bookmark.id} bookmark={bookmark} />
+          <BookmarkItem
+            key={bookmark.id}
+            bookmark={bookmark}
+            tags={bookmark.tagIds.map((tagId) => tagsById.get(tagId)).filter((tag): tag is LocalTag => tag !== undefined)}
+          />
         ))}
       </ul>
-      {bookmarks.length === 0 && <p className={styles.empty}>This category is empty.</p>}
+      {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
       <div className={styles.actions}>
         <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
       </div>
@@ -32,4 +42,4 @@ const BookmarkList = () => {
   );
 };
 
-export { BookmarkList }
+export { BookmarkList };

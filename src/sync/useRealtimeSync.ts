@@ -14,7 +14,7 @@ const useRealtimeSync = () => {
     if (!isAuthChecked || !authUserId) return;
     let cancelled = false;
     let unsubscribeBookmarks: UnsubscribeFunc | undefined;
-    let unsubscribeCategories: UnsubscribeFunc | undefined;
+    let unsubscribeTags: UnsubscribeFunc | undefined;
     let unsubscribeConnect: UnsubscribeFunc | undefined;
     let retryTimer: number | undefined;
     let retryAttempt = 0;
@@ -66,7 +66,7 @@ const useRealtimeSync = () => {
       try {
         const filter = { filter: `user = "${authUserId}"` };
          unsubscribeBookmarks = await pb.collection('bookmarks').subscribe('*', () => { void run(false); }, filter);
-         unsubscribeCategories = await pb.collection('categories').subscribe('*', () => { void run(false); }, filter);
+         unsubscribeTags = await pb.collection('tags').subscribe('*', () => { void run(false); }, filter);
           unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => {
             void run(false).then((synced) => {
               if (synced && !cancelled) setRealtimeStatus('live');
@@ -92,7 +92,7 @@ const useRealtimeSync = () => {
       window.removeEventListener('sync-notice', handleNotice);
       pb.realtime.onDisconnect = undefined;
       void unsubscribeBookmarks?.();
-      void unsubscribeCategories?.();
+      void unsubscribeTags?.();
       void unsubscribeConnect?.();
       setRealtimeStatus('off');
     };
