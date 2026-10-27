@@ -1,38 +1,101 @@
 # Self-hosting 02_Bookmarks
 
 This setup uses Podman, `podman-compose`, and an existing Caddy installation.
-The application containers serve the frontend and PocketBase on the shared
-Podman network; Caddy provides the public HTTPS endpoint and proxies both
+The application images are published to the GitHub Container Registry, so a
+site only needs the Compose file and a data directory — no source checkout and
+no build tooling. Caddy provides the public HTTPS endpoint and proxies both
 services.
 
 ## Requirements
 
 - A Linux server with a public IPv4 address.
+- An x86_64 (`linux/amd64`) host; no ARM images are published.
 - Podman and its Compose provider are installed.
 - Caddy is installed and running on the host.
 - A domain or subdomain points to the server with an `A` record.
 - Ports `80` and `443` are open in the server and VPS firewall.
-- Server snapshots or backups cover `pb_data`.
+- Server snapshots or backups cover the PocketBase data directory.
+
+## Images
+
+Both images are built by `.github/workflows/publish.yml` for `linux/amd64` and
+pushed to:
+
+```text
+ghcr.io/zawias-pro/02-bookmarks-frontend
+ghcr.io/zawias-pro/02-bookmarks-pocketbase
+```
+
+Images are published only when a semantic version tag is pushed, for example
+`1.2.3` (with no `v` prefix). Each image is tagged with exactly that version:
+
+```text
+ghcr.io/zawias-pro/02-bookmarks-frontend:1.2.3
+ghcr.io/zawias-pro/02-bookmarks-pocketbase:1.2.3
+```
+
+There are no floating tags: no `latest`, no branch names, and no commit hashes.
+Every deployment pins a release, and updating means choosing a new release tag.
+Available versions are listed on the repository's Tags page.
+
+PocketBase migrations are baked into the PocketBase image. The database itself
+lives outside the containers in `BOOKMARKS_DATA_DIR`, so updating images never
+touches application data.
+
+If the packages are public, pulling needs no credentials. Otherwise, make the
+packages public in the repository's package settings, or authenticate once with
+a GitHub token that has the `read:packages` scope:
+
+```sh
+echo "$GITHUB_TOKEN" | sudo podman login ghcr.io -u <github-user> --password-stdin
+```
 
 ## Install
 
-Clone the repository on the server and enter the installation directory. The
-commands below assume a root-owned production checkout, as used on `vps-02-ovh`:
+Create the install directory and fetch the production Compose file:
 
 ```sh
-git clone <repository-url> 02-bookmarks
-cd 02-bookmarks/installation
+sudo mkdir -p /srv/02-bookmarks/pb_data
+cd /srv/02-bookmarks
+sudo curl -fsSLO https://raw.githubusercontent.com/zawias-pro/02_Bookmarks/main/installation/compose.yml
 ```
 
-Start the production stack. On `vps-02-ovh`, include the infrastructure override
-so both services join the existing `infra_proxy` network:
+Create `.env` with the image version and the host path that stores PocketBase
+data:
 
 ```sh
-sudo podman-compose \
-  --podman-build-args=--network=host \
-  -f compose.yml \
-  -f compose.override.yml \
-  up -d --build --force-recreate
+sudo tee .env >/dev/null <<'EOF'
+BOOKMARKS_VERSION=1.2.3
+BOOKMARKS_DATA_DIR=/srv/02-bookmarks/pb_data
+EOF
+```
+
+Replace `1.2.3` with the release tag to deploy. `BOOKMARKS_VERSION` is required:
+without it, Compose stops with an error instead of guessing a version.
+
+On `vps-02-ovh`, both services must join the existing `infra_proxy` network so
+Caddy can reach them. Create the site-specific override:
+
+```sh
+sudo tee compose.override.yml >/dev/null <<'EOF'
+networks:
+  default:
+    name: infra_proxy
+    external: true
+EOF
+```
+
+The project name is fixed to `02-bookmarks` in `compose.yml`, so container names
+such as `02-bookmarks_pocketbase_1` do not depend on the directory name. The
+commands below include `-f compose.override.yml`; omit it on hosts that do not
+join `infra_proxy`.
+
+Start the stack:
+
+```sh
+cd /srv/02-bookmarks
+sudo podman-compose -f compose.yml -f compose.override.yml pull
+sudo podman-compose -f compose.yml -f compose.override.yml up -d
 ```
 
 Create the PocketBase administrator once. There are no default admin
@@ -43,6 +106,7 @@ is entered interactively and is not stored in the Compose configuration:
 read -r -p "Admin email: " PB_ADMIN_EMAIL
 read -r -s -p "Admin password: " PB_ADMIN_PASSWORD
 printf '\n'
+cd /srv/02-bookmarks
 sudo podman-compose \
   -f compose.yml \
   -f compose.override.yml \
@@ -75,24 +139,44 @@ administrator interface is available at `https://bookmarks.example.com/_/`.
 The containers do not publish host ports. Caddy must be connected to the same
 Podman network as the application and is the only public entry point.
 
+## Updates
+
+Set `BOOKMARKS_VERSION` in `.env` to the new release tag, then pull the images
+and recreate the containers:
+
+```sh
+cd /srv/02-bookmarks
+sudo podman-compose -f compose.yml -f compose.override.yml pull
+sudo podman-compose -f compose.yml -f compose.override.yml up -d --force-recreate
+```
+
+Pulling alone does not change a running deployment: the tag in `.env` decides
+which release runs. Rollback uses the same procedure with the previous tag.
+
+An existing checkout-based installation needs no data migration: run
+`git pull`, add `BOOKMARKS_VERSION` to `installation/.env`, then use the pull and
+recreate commands. The default data path (`../pb_data`) and project name are
+unchanged.
+
 ## Operations
 
 ```sh
+cd /srv/02-bookmarks
 sudo podman-compose -f compose.yml -f compose.override.yml ps
 sudo podman-compose -f compose.yml -f compose.override.yml logs -f
 sudo podman-compose -f compose.yml -f compose.override.yml down
 ```
 
-To update a source checkout:
+The `pb_data` directory contains the PocketBase database and is mounted
+outside the containers, so recreating or rolling back images does not remove
+application data.
+
+## Building images locally
+
+To test image changes without waiting for the workflow, use the build override.
+It builds the same image tags locally from the repository checkout:
 
 ```sh
-cd /srv/02-bookmarks
-git pull
-sudo podman-compose \
-  -f installation/compose.yml \
-  -f installation/compose.override.yml \
-  up -d --build --force-recreate
+cd installation
+BOOKMARKS_VERSION=dev sudo podman-compose -f compose.yml -f compose.build.yml up -d --build --force-recreate
 ```
-
-The `../pb_data` directory contains the PocketBase database and is mounted
-outside the containers, so rebuilding them does not remove application data.

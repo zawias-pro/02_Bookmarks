@@ -2,15 +2,12 @@ name: 02-bookmarks
 
 services:
   pocketbase:
-    build:
-      context: ..
-      dockerfile: installation/pocketbase/Containerfile
+    image: ghcr.io/zawias-pro/02-bookmarks-pocketbase:${BOOKMARKS_VERSION:?Set BOOKMARKS_VERSION to a release tag, for example 1.2.3}
     restart: unless-stopped
     expose:
       - "8090"
     volumes:
-      - ../pb_data:/pb/pb_data:Z
-      - ../pb_migrations:/pb/pb_migrations:Z
+      - ${BOOKMARKS_DATA_DIR:-../pb_data}:/pb/pb_data:Z
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
       interval: 10s
@@ -18,9 +15,7 @@ services:
       retries: 5
 
   frontend:
-    build:
-      context: ..
-      dockerfile: installation/frontend/Containerfile
+    image: ghcr.io/zawias-pro/02-bookmarks-frontend:${BOOKMARKS_VERSION:?Set BOOKMARKS_VERSION to a release tag, for example 1.2.3}
     depends_on:
       pocketbase:
         condition: service_healthy
