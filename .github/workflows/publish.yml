@@ -71,6 +71,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/02-bookmarks-${{ matrix.image.name }}
           tags: |
             type=semver,pattern={{version}}
+          flavor: |
+            latest=false
           labels: |
             org.opencontainers.image.title=02_Bookmarks ${{ matrix.image.name }}
 
