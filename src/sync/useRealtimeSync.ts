@@ -19,13 +19,14 @@ const useRealtimeSync = () => {
     let retryTimer: number | undefined;
     let retryAttempt = 0;
     let retryNoticeShown = false;
+    let subscribeNoticeShown = false;
     const scheduleRetry = () => {
       if (cancelled || retryTimer !== undefined) return;
       const delay = Math.min(30_000, 1_000 * 2 ** retryAttempt);
       retryAttempt += 1;
       retryTimer = window.setTimeout(() => {
         retryTimer = undefined;
-        void run();
+        void recover();
       }, delay);
       setRealtimeStatus('reconnecting');
     };
@@ -60,29 +61,53 @@ const useRealtimeSync = () => {
       if (notice.kind === 'conflict') toast.warning(notice.message);
       else toast.info(notice.message);
     };
-    const start = async () => {
-      setRealtimeStatus('connecting');
-      void run();
+    const unsubscribeAll = async () => {
+      await unsubscribeBookmarks?.();
+      unsubscribeBookmarks = undefined;
+      await unsubscribeCategories?.();
+      unsubscribeCategories = undefined;
+      await unsubscribeConnect?.();
+      unsubscribeConnect = undefined;
+    };
+    const subscribe = async () => {
+      await unsubscribeAll();
+      const filter = { filter: `user = "${authUserId}"` };
+      unsubscribeBookmarks = await pb.collection('bookmarks').subscribe('*', () => { void run(false); }, filter);
+      unsubscribeCategories = await pb.collection('categories').subscribe('*', () => { void run(false); }, filter);
+      unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => {
+        void run(false).then((synced) => {
+          if (synced && !cancelled) setRealtimeStatus('live');
+        });
+      });
+    };
+    // A subscription that failed once has to be retried too, not just the sync call.
+    const recover = async () => {
+      if (cancelled) return;
+      if (!await run()) return;
       try {
-        const filter = { filter: `user = "${authUserId}"` };
-         unsubscribeBookmarks = await pb.collection('bookmarks').subscribe('*', () => { void run(false); }, filter);
-         unsubscribeCategories = await pb.collection('categories').subscribe('*', () => { void run(false); }, filter);
-          unsubscribeConnect = await pb.realtime.subscribe('PB_CONNECT', () => {
-            void run(false).then((synced) => {
-              if (synced && !cancelled) setRealtimeStatus('live');
-            });
-          });
+        await subscribe();
+        subscribeNoticeShown = false;
         if (!cancelled) setRealtimeStatus('live');
       } catch (error) {
-        if (!cancelled) { setRealtimeStatus('reconnecting'); toast.error(error instanceof Error ? error.message : 'Live sync connection failed.'); }
+        if (cancelled) return;
+        setRealtimeStatus('reconnecting');
+        if (!subscribeNoticeShown) {
+          subscribeNoticeShown = true;
+          toast.error(error instanceof Error ? error.message : 'Live sync connection failed.');
+        }
+        scheduleRetry();
       }
+    };
+    const start = () => {
+      setRealtimeStatus('connecting');
+      void recover();
     };
     pb.realtime.onDisconnect = () => { if (!cancelled) setRealtimeStatus('reconnecting'); };
     window.addEventListener('online', handleOnline);
     window.addEventListener('pageshow', handlePageShow);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('sync-notice', handleNotice);
-    void start();
+    start();
     return () => {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
@@ -91,9 +116,7 @@ const useRealtimeSync = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('sync-notice', handleNotice);
       pb.realtime.onDisconnect = undefined;
-      void unsubscribeBookmarks?.();
-      void unsubscribeCategories?.();
-      void unsubscribeConnect?.();
+      void unsubscribeAll();
       setRealtimeStatus('off');
     };
   }, [authUserId, isAuthChecked, setRealtimeStatus]);

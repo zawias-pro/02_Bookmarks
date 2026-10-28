@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '../../components/Button/Button.tsx'
 import { appUpdateEvent, appVersion, checkForUpdate, updateApp } from '../../pwa.ts'
 import styles from './UpdateNotice.module.css'
 
 const UpdateNotice = () => {
   const [availableVersion, setAvailableVersion] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     const handleUpdate = (event: Event) => {
@@ -18,13 +20,25 @@ const UpdateNotice = () => {
     return () => window.removeEventListener(appUpdateEvent, handleUpdate)
   }, [])
 
+  const update = async () => {
+    setIsUpdating(true)
+    try {
+      await updateApp()
+    } catch (error) {
+      setIsUpdating(false)
+      toast.error(error instanceof Error ? error.message : 'Could not update the app.')
+    }
+  }
+
   return (
     <section className={styles.notice} aria-label="App version">
       <dl>
         <div><dt>Installed</dt><dd>{appVersion}</dd></div>
         <div><dt>Available</dt><dd>{availableVersion ?? appVersion}</dd></div>
       </dl>
-      <Button onClick={() => void updateApp()}>Update app</Button>
+      <Button onClick={() => void update()} disabled={isUpdating}>
+        {isUpdating ? 'Updating...' : 'Update app'}
+      </Button>
     </section>
   )
 }
