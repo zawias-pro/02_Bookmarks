@@ -15,6 +15,7 @@ type BookmarkFilter = { kind: 'all' } | { kind: 'untagged' } | { kind: 'tag'; ta
 type AppStore = {
   isAuthFormOpen: boolean
   isSyncModalOpen: boolean
+  isEditMode: boolean
   isTagFormOpen: boolean
   isTagEditFormOpen: boolean
   isBookmarkFormOpen: boolean
@@ -27,6 +28,7 @@ type AppStore = {
   theme: Theme
   setAuthFormOpen: (isOpen: boolean) => void
   setSyncModalOpen: (isOpen: boolean) => void
+  toggleEditMode: () => void
   setTagFormOpen: (isOpen: boolean) => void
   setTagEditFormOpen: (isOpen: boolean) => void
   setBookmarkFormOpen: (isOpen: boolean) => void
@@ -43,6 +45,7 @@ const initialThemeSetting = readThemeSetting()
 const useAppStore = create<AppStore>((set, get) => ({
   isAuthFormOpen: false,
   isSyncModalOpen: false,
+  isEditMode: false,
   isTagFormOpen: false,
   isTagEditFormOpen: false,
   isBookmarkFormOpen: false,
@@ -55,6 +58,7 @@ const useAppStore = create<AppStore>((set, get) => ({
   theme: resolveThemeSetting(initialThemeSetting),
   setAuthFormOpen: (isOpen) => set({ isAuthFormOpen: isOpen }),
   setSyncModalOpen: (isOpen) => set({ isSyncModalOpen: isOpen }),
+  toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
   setTagFormOpen: (isOpen) => set({ isTagFormOpen: isOpen }),
   setTagEditFormOpen: (isOpen) => set({ isTagEditFormOpen: isOpen }),
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),

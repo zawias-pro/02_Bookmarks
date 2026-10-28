@@ -8,6 +8,7 @@ import styles from './BookmarkList.module.css';
 
 const BookmarkList = () => {
   const selectedFilter = useAppStore((state) => state.selectedFilter);
+  const isEditMode = useAppStore((state) => state.isEditMode);
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen);
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
   const bookmarks = useLiveQuery(async () => {
@@ -25,9 +26,11 @@ const BookmarkList = () => {
         ))}
       </ul>
       {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
-      <div className={styles.actions}>
-        <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
-      </div>
+      {isEditMode && (
+        <div className={styles.actions}>
+          <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
+        </div>
+      )}
       {isBookmarkFormOpen && <AddBookmarkForm />}
     </div>
   );

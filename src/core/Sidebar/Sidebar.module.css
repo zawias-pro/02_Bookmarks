@@ -25,7 +25,7 @@
   gap: 0.5rem;
 }
 
-.settingsButton {
+.iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -41,19 +41,25 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.settingsButton:hover {
+.iconButton:hover {
   background: var(--color-surface-secondary);
   color: var(--color-text);
 }
 
-.settingsButton:focus-visible {
+.iconButton:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
 
-.settingsButton svg {
+.iconButton svg {
   width: 1.125rem;
   height: 1.125rem;
+}
+
+.iconButton[aria-pressed="true"] {
+  border-color: var(--color-text);
+  color: var(--color-text);
+  background: var(--color-surface-secondary);
 }
 
 .sidebarTitle {

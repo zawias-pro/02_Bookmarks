@@ -7,6 +7,7 @@ import styles from './TagHeader.module.css'
 
 const TagHeader = () => {
   const selectedFilter = useAppStore((state) => state.selectedFilter)
+  const isEditMode = useAppStore((state) => state.isEditMode)
   const setTagEditFormOpen = useAppStore((state) => state.setTagEditFormOpen)
   const tagId = selectedFilter.kind === 'tag' ? selectedFilter.tagId : null
   const tag = useLiveQuery(() => tagId === null ? undefined : db.tags.get(tagId), [tagId])
@@ -20,7 +21,7 @@ const TagHeader = () => {
     <>
       <header className={styles.header}>
         <h1 className={styles.title}>{title}</h1>
-        {tag && <Button variant="ghost" onClick={() => setTagEditFormOpen(true)}>Edit</Button>}
+        {isEditMode && tag && <Button variant="ghost" onClick={() => setTagEditFormOpen(true)}>Edit</Button>}
       </header>
       <EditTagForm />
     </>
