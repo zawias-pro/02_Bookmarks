@@ -2,6 +2,9 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 5rem);
+  gap: 1rem;
 }
 
 .actions {

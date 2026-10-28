@@ -2,18 +2,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../persistence/database.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Button } from '../../components/Button/Button.tsx';
-import type { LocalTag } from '../../model/model.ts';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
-import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
 import styles from './BookmarkList.module.css';
 
 const BookmarkList = () => {
   const selectedFilter = useAppStore((state) => state.selectedFilter);
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen);
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
-  const tags = useLiveQuery(() => db.tags.toArray(), []) ?? [];
-  const tagsById = new Map(tags.map((tag) => [tag.id, tag]));
   const bookmarks = useLiveQuery(async () => {
     const items = await db.bookmarks.orderBy('order').toArray();
     if (selectedFilter.kind === 'all') return items;
@@ -25,11 +21,7 @@ const BookmarkList = () => {
     <div>
       <ul className={styles.list}>
         {bookmarks.map((bookmark) => (
-          <BookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            tags={bookmark.tagIds.map((tagId) => tagsById.get(tagId)).filter((tag): tag is LocalTag => tag !== undefined)}
-          />
+          <BookmarkItem key={bookmark.id} bookmark={bookmark} />
         ))}
       </ul>
       {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
@@ -37,7 +29,6 @@ const BookmarkList = () => {
         <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
       </div>
       {isBookmarkFormOpen && <AddBookmarkForm />}
-      <EditBookmarkForm />
     </div>
   );
 };
