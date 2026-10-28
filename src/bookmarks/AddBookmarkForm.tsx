@@ -1,17 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { createBookmark } from '../sync/sync.ts'
+import { uncategorizedCategoryId } from '../model/model.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
 import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
 import { useAppStore } from '../store/appStore.ts'
-import { TagPicker } from './TagPicker/TagPicker.tsx'
+import { CategoryPicker } from './CategoryPicker/CategoryPicker.tsx'
 
 const AddBookmarkForm = () => {
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
-  const selectedFilter = useAppStore((state) => state.selectedFilter)
-  const [tagIds, setTagIds] = useState<string[]>(selectedFilter.kind === 'tag' ? [selectedFilter.tagId] : [])
+  const selectedCategoryId = useAppStore((state) => state.selectedCategoryId)
+  const [categoryId, setCategoryId] = useState<string | null>(selectedCategoryId === uncategorizedCategoryId ? null : selectedCategoryId)
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen)
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen)
 
@@ -19,14 +20,14 @@ const AddBookmarkForm = () => {
     event.preventDefault()
     if (!title.trim() || !link.trim()) return
     try {
-      await createBookmark({ title, link, tagIds })
+      await createBookmark({ title, link, categoryId })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save bookmark.')
     }
     if (navigator.onLine === false) toast.info("You're offline. Saved on this device, will sync on reconnect.")
     setTitle('')
     setLink('')
-    setTagIds([])
+    setCategoryId(null)
     setBookmarkFormOpen(false)
   }
 
@@ -42,7 +43,7 @@ const AddBookmarkForm = () => {
         <Field label="URL" htmlFor="bookmark-link">
           <input id="bookmark-link" aria-label="Bookmark URL" placeholder="https://example.com" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
         </Field>
-        <TagPicker selectedTagIds={tagIds} onChange={setTagIds} />
+        <CategoryPicker categoryId={categoryId} onChange={setCategoryId} />
         <Button type="submit">Add</Button>
       </form>
     </Modal>

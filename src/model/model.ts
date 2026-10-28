@@ -5,25 +5,33 @@ export interface LocalBookmark {
   link: string;
   favicon?: string;
   order: number;
-  tagIds: string[];
+  categoryId: string | null;
   updatedAt: string;
 }
 
-export interface LocalTag {
+export interface LocalCategory {
   id: string;
   remoteId?: string;
   name: string;
   createdAt: string;
   updatedAt: string;
+  positions?: Record<string, number>;
 }
 
 export interface OutboxMutation {
   id: string;
-  collection: 'bookmarks' | 'tags';
+  collection: 'bookmarks' | 'categories';
   operation: 'create' | 'update' | 'delete';
   entityId: string;
   remoteId?: string;
   baseRemoteUpdatedAt?: string;
-  snapshot: LocalBookmark | LocalTag;
+  snapshot: LocalBookmark | LocalCategory;
   createdAt: string;
 }
+
+// The uncategorized board is a real, hidden category record so it syncs like any other board.
+// Its id is kept from the former untagged tag so existing remote rows need no rewrite.
+const uncategorizedCategoryId = 'untaggedtag0000';
+const uncategorizedCategoryName = '_uncategorized';
+
+export { uncategorizedCategoryId, uncategorizedCategoryName };

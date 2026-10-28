@@ -1,15 +1,23 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalBookmark, LocalTag, OutboxMutation } from '../model/model.ts';
+import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
-type LegacyBookmark = Omit<LocalBookmark, 'tagIds'> & { tagIds?: string[]; categoryId?: string };
+type LegacyTag = {
+  id: string;
+  remoteId?: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  positions?: Record<string, number>;
+};
+type LegacyTaggedBookmark = Omit<LocalBookmark, 'categoryId'> & { tagIds?: string[]; categoryId?: string | null; categoryIds?: string[] };
 type LegacyOutboxMutation = Omit<OutboxMutation, 'collection' | 'snapshot'> & {
   collection: 'bookmarks' | 'categories' | 'tags';
-  snapshot: LegacyBookmark | LocalTag;
+  snapshot: LegacyTaggedBookmark | LegacyTag;
 };
 
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;
-  tags!: Table<LocalTag, string>;
+  categories!: Table<LocalCategory, string>;
   outbox!: Table<OutboxMutation, string>;
 
   constructor() {
@@ -23,7 +31,7 @@ class BookmarksDatabase extends Dexie {
       bookmarks: 'id, remoteId, updatedAt, order, categoryId',
       categories: 'id, name, createdAt',
       profiles: 'id',
-    }).upgrade((transaction) => transaction.table('bookmarks').toCollection().modify((bookmark: LegacyBookmark & { categoryIds?: string[] }) => {
+    }).upgrade((transaction) => transaction.table('bookmarks').toCollection().modify((bookmark: LegacyTaggedBookmark) => {
       if (!bookmark.categoryId && bookmark.categoryIds?.[0]) bookmark.categoryId = bookmark.categoryIds[0];
       delete bookmark.categoryIds;
     }));
@@ -31,7 +39,7 @@ class BookmarksDatabase extends Dexie {
       bookmarks: 'id, remoteId, updatedAt, order, categoryId',
       categories: 'id, remoteId, name, createdAt',
       profiles: 'id',
-    }).upgrade((transaction) => transaction.table('categories').toCollection().modify((category: LocalTag) => {
+    }).upgrade((transaction) => transaction.table('categories').toCollection().modify((category: LegacyTag) => {
       if (!category.updatedAt) category.updatedAt = category.createdAt;
     }));
     this.version(4).stores({
@@ -55,20 +63,54 @@ class BookmarksDatabase extends Dexie {
       tombstones: 'id, remoteId, collection',
       outbox: 'id, createdAt, collection, entityId, remoteId',
     }).upgrade(async (transaction) => {
-      const categories = await transaction.table<LocalTag>('categories').toArray();
-      if (categories.length > 0) await transaction.table<LocalTag>('tags').bulkPut(categories);
-      await transaction.table<LegacyBookmark>('bookmarks').toCollection().modify((bookmark) => {
+      const categories = await transaction.table<LegacyTag>('categories').toArray();
+      if (categories.length > 0) await transaction.table<LegacyTag>('tags').bulkPut(categories);
+      await transaction.table<LegacyTaggedBookmark>('bookmarks').toCollection().modify((bookmark) => {
         bookmark.tagIds = bookmark.categoryId ? [bookmark.categoryId] : [];
         delete bookmark.categoryId;
       });
       await transaction.table<LegacyOutboxMutation>('outbox').toCollection().modify((mutation) => {
         if (mutation.collection === 'categories') mutation.collection = 'tags';
         if (mutation.collection === 'bookmarks') {
-          const snapshot = mutation.snapshot as LegacyBookmark;
+          const snapshot = mutation.snapshot as LegacyTaggedBookmark;
           snapshot.tagIds = snapshot.categoryId ? [snapshot.categoryId] : [];
           delete snapshot.categoryId;
         }
       });
+    });
+    this.version(7).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      tags: 'id, remoteId, name, createdAt, updatedAt',
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
+    }).upgrade(async (transaction) => {
+      const tags = await transaction.table<LegacyTag>('tags').toArray();
+      if (tags.length > 0) await transaction.table<LocalCategory>('categories').bulkPut(tags);
+      await transaction.table<LocalCategory>('categories').toCollection().modify((category) => {
+        if (category.name === '_untagged') category.name = '_uncategorized';
+      });
+      await transaction.table<LegacyTaggedBookmark>('bookmarks').toCollection().modify((bookmark) => {
+        bookmark.categoryId = bookmark.tagIds?.[0] ?? null;
+        delete bookmark.tagIds;
+      });
+      await transaction.table<LegacyOutboxMutation>('outbox').toCollection().modify((mutation) => {
+        if (mutation.collection === 'tags') mutation.collection = 'categories';
+        if (mutation.collection === 'bookmarks') {
+          const snapshot = mutation.snapshot as LegacyTaggedBookmark;
+          snapshot.categoryId = snapshot.tagIds?.[0] ?? null;
+          delete snapshot.tagIds;
+        }
+      });
+    });
+    this.version(8).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      tags: null,
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
     });
   }
 }

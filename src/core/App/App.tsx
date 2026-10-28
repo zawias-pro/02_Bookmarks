@@ -6,8 +6,9 @@ import { Sidebar } from '../Sidebar/Sidebar.tsx';
 import { applyTheme } from '../../theming/theme.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Toaster } from 'sonner';
-import { TagHeader } from '../../tags/TagHeader/TagHeader.tsx';
+import { CategoryHeader } from '../../categories/CategoryHeader/CategoryHeader.tsx';
 import { useRealtimeSync } from '../../sync/useRealtimeSync.ts';
+import { ensureUncategorizedCategory } from '../../sync/sync.ts';
 import styles from './App.module.css'
 
 const App = () => {
@@ -20,13 +21,17 @@ const App = () => {
     applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    void ensureUncategorizedCategory();
+  }, []);
+
   return (
     <div className={styles.app}>
       <div className={styles.sidebar}>
           <Sidebar />
       </div>
       <main className={styles.main}>
-        <TagHeader />
+        <CategoryHeader />
         <BookmarkList />
       </main>
       {isAuthFormOpen && <AuthForm />}

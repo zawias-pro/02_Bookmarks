@@ -7,7 +7,7 @@ import { Button } from '../components/Button/Button.tsx'
 import { db } from '../persistence/database.ts'
 import { deleteBookmark, updateBookmark } from '../sync/sync.ts'
 import { useAppStore } from '../store/appStore.ts'
-import { TagPicker } from './TagPicker/TagPicker.tsx'
+import { CategoryPicker } from './CategoryPicker/CategoryPicker.tsx'
 
 const EditBookmarkForm = () => {
   const editingBookmarkId = useAppStore((state) => state.editingBookmarkId)
@@ -18,19 +18,19 @@ const EditBookmarkForm = () => {
   )
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
-  const [tagIds, setTagIds] = useState<string[]>([])
+  const [categoryId, setCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
     setTitle(bookmark?.title ?? '')
     setLink(bookmark?.link ?? '')
-    setTagIds(bookmark?.tagIds ?? [])
+    setCategoryId(bookmark?.categoryId ?? null)
   }, [bookmark])
 
   const updateBookmarkEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!bookmark || !title.trim() || !link.trim()) return
     try {
-      await updateBookmark(bookmark.id, { title, link, tagIds })
+      await updateBookmark(bookmark.id, { title, link, categoryId })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save bookmark.')
     }
@@ -62,7 +62,7 @@ const EditBookmarkForm = () => {
         <Field label="URL" htmlFor="edit-bookmark-link-input">
           <input id="edit-bookmark-link-input" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
         </Field>
-        <TagPicker selectedTagIds={tagIds} onChange={setTagIds} />
+        <CategoryPicker categoryId={categoryId} onChange={setCategoryId} />
         <Button type="submit">Save</Button>
         <Button type="button" variant="dangerGhost" onClick={() => void removeBookmark()}>Delete bookmark</Button>
       </form>

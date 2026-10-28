@@ -71,8 +71,8 @@
       },
       {
         "system": false,
-        "id": "field_tags",
-        "name": "tags",
+        "id": "field_category",
+        "name": "category",
         "type": "relation",
         "required": false,
         "presentable": false,
@@ -81,7 +81,7 @@
           "collectionId": "categories_coll_01",
           "cascadeDelete": false,
           "minSelect": null,
-          "maxSelect": 99,
+          "maxSelect": 1,
           "displayFields": null
         }
       },
@@ -113,7 +113,7 @@
   },
   {
     "id": "categories_coll_01",
-    "name": "tags",
+    "name": "categories",
     "type": "base",
     "system": false,
     "schema": [
@@ -129,6 +129,18 @@
           "min": null,
           "max": 255,
           "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "field_tag_positions",
+        "name": "positions",
+        "type": "json",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSize": 0
         }
       },
       {
