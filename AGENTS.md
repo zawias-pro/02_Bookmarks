@@ -21,6 +21,7 @@
 - PocketBase access is centralized in `src/lib/pocketbase.ts`; do not create additional SDK instances in components.
 - Dexie in `src/lib/database.ts` is the source of truth for local bookmarks; local edits must work offline.
 - Dexie categories are local-first too; `src/core/Sidebar/Sidebar.tsx` owns category creation and filtering.
+- Categories form a tree: `parentId` (`null` at top level) and `order` within their parent, at most three levels deep. The sidebar renders it flat with indents, drag-and-drop in edit mode reorders and re-parents, and `src/categories/tree.ts` holds the pure tree, move and delete planning.
 - A bookmark belongs to at most one category (`categoryId`, `null` when uncategorized); there are no multi-category bookmarks.
 - Every category owns its board layout in `positions` (bookmark id to grid slot); the uncategorized board is a hidden category record with a fixed id, and empty slots are intentional gaps, never compacted.
 - There is no all-bookmarks view: the sidebar lists Uncategorized plus categories, and the selected view persists in localStorage.

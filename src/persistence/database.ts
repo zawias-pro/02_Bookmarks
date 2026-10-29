@@ -14,6 +14,7 @@ type LegacyOutboxMutation = Omit<OutboxMutation, 'collection' | 'snapshot'> & {
   collection: 'bookmarks' | 'categories' | 'tags';
   snapshot: LegacyTaggedBookmark | LegacyTag;
 };
+type LegacyOrderedCategory = Omit<LocalCategory, 'parentId' | 'order'> & { parentId?: string | null; order?: number };
 
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;
@@ -87,8 +88,8 @@ class BookmarksDatabase extends Dexie {
       outbox: 'id, createdAt, collection, entityId, remoteId',
     }).upgrade(async (transaction) => {
       const tags = await transaction.table<LegacyTag>('tags').toArray();
-      if (tags.length > 0) await transaction.table<LocalCategory>('categories').bulkPut(tags);
-      await transaction.table<LocalCategory>('categories').toCollection().modify((category) => {
+      if (tags.length > 0) await transaction.table<LegacyOrderedCategory>('categories').bulkPut(tags);
+      await transaction.table<LegacyOrderedCategory>('categories').toCollection().modify((category) => {
         if (category.name === '_untagged') category.name = '_uncategorized';
       });
       await transaction.table<LegacyTaggedBookmark>('bookmarks').toCollection().modify((bookmark) => {
@@ -111,6 +112,18 @@ class BookmarksDatabase extends Dexie {
       profiles: 'id',
       tombstones: 'id, remoteId, collection',
       outbox: 'id, createdAt, collection, entityId, remoteId',
+    });
+    // Every existing category becomes a top-level entry, ordered by the name order the sidebar showed.
+    this.version(9).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
+    }).upgrade(async (transaction) => {
+      const categories = await transaction.table<LegacyOrderedCategory>('categories').toArray();
+      const ordered = [...categories].sort((left, right) => left.name.localeCompare(right.name));
+      await transaction.table<LocalCategory>('categories').bulkPut(ordered.map((category, index) => ({ ...category, parentId: null, order: index })));
     });
   }
 }

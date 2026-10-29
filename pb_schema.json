@@ -145,6 +145,36 @@
       },
       {
         "system": false,
+        "id": "field_category_parent",
+        "name": "parent",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "categories_coll_01",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "field_category_order",
+        "name": "order",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": false
+        }
+      },
+      {
+        "system": false,
         "id": "field_category_user",
         "name": "user",
         "type": "relation",

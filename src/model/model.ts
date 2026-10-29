@@ -13,6 +13,8 @@ export interface LocalCategory {
   id: string;
   remoteId?: string;
   name: string;
+  parentId: string | null;
+  order: number;
   createdAt: string;
   updatedAt: string;
   positions?: Record<string, number>;

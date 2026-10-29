@@ -1,10 +1,11 @@
 import type { RecordModel } from 'pocketbase';
 import { db, createId } from '../persistence/database.ts';
 import { pb } from '../persistence/pocketbase.ts';
+import { categoryRows, descendantsOf, planCategoryDelete, planCategoryMove } from '../categories/tree.ts';
 import { uncategorizedCategoryId, uncategorizedCategoryName } from '../model/model.ts';
 import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
-type RemoteCategory = RecordModel & Pick<LocalCategory, 'name'> & { positions?: Record<string, number> };
+type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { positions?: Record<string, number>; parent?: string };
 type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { category?: string };
 type Collection = OutboxMutation['collection'];
 type Notice = { kind: 'info' | 'conflict'; message: string };
@@ -68,6 +69,14 @@ const remoteCategoryId = async (categoryId: string | null) => {
   return category.remoteId;
 };
 
+const remoteParentId = async (parentId: string | null) => {
+  if (parentId === null) return '';
+  const parent = await db.categories.get(parentId);
+  if (!parent) throw new Error(`Cannot sync category because its parent ${parentId} does not exist locally.`);
+  if (!parent.remoteId) throw new Error(`Cannot sync category because its parent "${parent.name}" has not synced yet.`);
+  return parent.remoteId;
+};
+
 const bookmarkFormData = async (snapshot: LocalBookmark, user?: string) => {
   const data = new FormData();
   data.set('title', snapshot.title);
@@ -90,7 +99,12 @@ const remotePositionKeys = async (positions: Record<string, number>) => {
   }));
 };
 
-const categoryFormData = async (snapshot: LocalCategory) => ({ name: snapshot.name, positions: JSON.stringify(await remotePositionKeys(snapshot.positions ?? {})) });
+const categoryFormData = async (snapshot: LocalCategory) => ({
+  name: snapshot.name,
+  order: snapshot.order,
+  parent: await remoteParentId(snapshot.parentId),
+  positions: JSON.stringify(await remotePositionKeys(snapshot.positions ?? {})),
+});
 
 const enqueue = async (mutation: Omit<OutboxMutation, 'id' | 'createdAt'>) => {
   const previous = await db.outbox.where('entityId').equals(mutation.entityId).toArray();
@@ -112,14 +126,23 @@ const createCategory = async (name: string) => {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Category name cannot be empty.');
   if (trimmed === uncategorizedCategoryName) throw new Error('That category name is reserved.');
-  const now = new Date().toISOString();
-  const category: LocalCategory = { id: createId(), name: trimmed, createdAt: now, updatedAt: now };
+  const id = createId();
   await db.transaction('rw', db.categories, db.outbox, async () => {
+    const now = new Date().toISOString();
+    const topLevel = await db.categories.filter((item) => item.parentId === null).toArray();
+    const category: LocalCategory = {
+      id,
+      name: trimmed,
+      parentId: null,
+      order: topLevel.reduce((last, item) => Math.max(last, item.order), -1) + 1,
+      createdAt: now,
+      updatedAt: now,
+    };
     await db.categories.add(category);
     await enqueue({ collection: 'categories', operation: 'create', entityId: category.id, snapshot: category });
   });
   void syncNow();
-  return category.id;
+  return id;
 };
 
 const updateCategory = async (id: string, name: string) => {
@@ -138,15 +161,41 @@ const updateCategory = async (id: string, name: string) => {
 
 const deleteCategory = async (id: string) => {
   await db.transaction('rw', db.categories, db.bookmarks, db.outbox, async () => {
-    const category = await db.categories.get(id);
+    const categories = await db.categories.toArray();
+    const category = categories.find((item) => item.id === id);
     if (!category) throw new Error('Cannot delete category because it does not exist locally.');
+    // Sub-categories survive their parent: they take its place among its siblings.
+    const moves = planCategoryDelete(categories, id);
     for (const bookmark of await db.bookmarks.where('categoryId').equals(id).toArray()) {
       const updated = { ...bookmark, categoryId: null, updatedAt: new Date().toISOString() };
       await db.bookmarks.put(updated);
       await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
     }
+    for (const move of moves) {
+      const child = categories.find((item) => item.id === move.id);
+      if (!child) throw new Error(`Cannot delete category because its child ${move.id} does not exist locally.`);
+      const updated = { ...child, ...move, updatedAt: new Date().toISOString() };
+      await db.categories.put(updated);
+      await enqueue({ collection: 'categories', operation: child.remoteId ? 'update' : 'create', entityId: child.id, remoteId: child.remoteId, baseRemoteUpdatedAt: child.remoteId ? child.updatedAt : undefined, snapshot: updated });
+    }
     await db.categories.delete(id);
     await enqueue({ collection: 'categories', operation: 'delete', entityId: id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: category });
+  });
+  void syncNow();
+};
+
+const moveCategory = async (id: string, parentId: string | null, index: number) => {
+  if (id === uncategorizedCategoryId) throw new Error('The uncategorized board cannot be moved.');
+  await db.transaction('rw', db.categories, db.outbox, async () => {
+    const categories = (await db.categories.toArray()).filter((category) => category.id !== uncategorizedCategoryId);
+    const now = new Date().toISOString();
+    for (const move of planCategoryMove(categories, id, parentId, index)) {
+      const category = categories.find((item) => item.id === move.id);
+      if (!category) throw new Error(`Cannot move category because ${move.id} does not exist locally.`);
+      const updated = { ...category, ...move, updatedAt: now };
+      await db.categories.put(updated);
+      await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: category.id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: updated });
+    }
   });
   void syncNow();
 };
@@ -157,7 +206,7 @@ const createUncategorizedCategory = async () => {
   for (const bookmark of await db.bookmarks.toArray()) {
     if (bookmark.categoryId === null) positions[bookmark.id] = bookmark.order;
   }
-  const category: LocalCategory = { id: uncategorizedCategoryId, name: uncategorizedCategoryName, createdAt: now, updatedAt: now, positions };
+  const category: LocalCategory = { id: uncategorizedCategoryId, name: uncategorizedCategoryName, parentId: null, order: 0, createdAt: now, updatedAt: now, positions };
   await db.transaction('rw', db.categories, db.outbox, async () => {
     await db.categories.add(category);
     await enqueue({ collection: 'categories', operation: 'create', entityId: category.id, snapshot: category });
@@ -339,13 +388,25 @@ const pull = async () => {
   ]);
   const pendingRemoteIds = new Set(pending.map((item) => item.remoteId).filter((id): id is string => Boolean(id)));
   const remotePositionMaps: { categoryId: string; positions: Record<string, number> }[] = [];
+  const remoteParents: { categoryId: string; parentRemoteId: string }[] = [];
   for (const remote of remoteCategories) {
     if (pendingRemoteIds.has(remote.id)) continue;
     const local = await localByRemote('categories', remote.id);
     const categoryId = local?.id ?? remote.id;
-    if (local) await db.categories.update(local.id, { name: remote.name, updatedAt: remote.updated });
-    else await db.categories.put({ id: remote.id, remoteId: remote.id, name: remote.name, createdAt: remote.created, updatedAt: remote.updated });
+    if (local) await db.categories.update(local.id, { name: remote.name, order: remote.order, updatedAt: remote.updated });
+    else await db.categories.put({ id: remote.id, remoteId: remote.id, name: remote.name, parentId: null, order: remote.order, createdAt: remote.created, updatedAt: remote.updated });
+    if (remote.parent) remoteParents.push({ categoryId, parentRemoteId: remote.parent });
     remotePositionMaps.push({ categoryId, positions: remote.positions ?? {} });
+  }
+  // Parents are shared as remote ids, and a parent can arrive after its child.
+  const localCategories = await db.categories.toArray();
+  for (const { categoryId, parentRemoteId } of remoteParents) {
+    const parent = await localByRemote('categories', parentRemoteId);
+    // Two devices can each nest the other's category; keeping the second would lock both in place.
+    if (parent && descendantsOf(localCategories, categoryId).has(parent.id)) continue;
+    await db.categories.update(categoryId, { parentId: parent?.id ?? null });
+    const local = localCategories.find((category) => category.id === categoryId);
+    if (local) local.parentId = parent?.id ?? null;
   }
   for (const remote of remoteBookmarks) {
     if (pendingRemoteIds.has(remote.id)) continue;
@@ -418,8 +479,11 @@ const runWorker = async () => {
   }
   const notices: Notice[] = [];
   const mutations = await db.outbox.orderBy('createdAt').toArray();
+  // A category that names a parent must reach the server after that parent exists there.
+  const ranks = new Map(categoryRows(await db.categories.toArray()).map(({ category }, index) => [category.id, index]));
+  const rankOf = (mutation: OutboxMutation) => ranks.get(mutation.entityId) ?? ranks.size;
   const orderedMutations = [
-    ...mutations.filter((mutation) => mutation.collection === 'categories'),
+    ...mutations.filter((mutation) => mutation.collection === 'categories').sort((left, right) => rankOf(left) - rankOf(right)),
     ...mutations.filter((mutation) => mutation.collection === 'bookmarks'),
   ];
   for (const mutation of orderedMutations) await processMutation(mutation, (notice) => notices.push(notice));
@@ -431,4 +495,4 @@ const syncNow = () => {
   return activeSync;
 };
 
-export { createBookmark, createCategory, deleteBookmark, deleteCategory, ensureUncategorizedCategory, moveCategoryBookmark, reloadFavicons, syncNow, updateBookmark, updateCategory };
+export { createBookmark, createCategory, deleteBookmark, deleteCategory, ensureUncategorizedCategory, moveCategory, moveCategoryBookmark, reloadFavicons, syncNow, updateBookmark, updateCategory };

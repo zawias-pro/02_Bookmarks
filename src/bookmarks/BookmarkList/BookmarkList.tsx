@@ -2,15 +2,22 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { db } from '../../persistence/database.ts';
 import { uncategorizedCategoryId } from '../../model/model.ts';
+import type { LocalBookmark } from '../../model/model.ts';
 import { moveCategoryBookmark } from '../../sync/sync.ts';
 import { useAppStore } from '../../store/appStore.ts';
 import { Button } from '../../components/Button/Button.tsx';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
+import { transformAt, usePointerDrag } from '../../components/usePointerDrag.ts';
 import { layoutBookmarks } from './layout.ts';
-import { transformAt, useBookmarkDrag } from './useBookmarkDrag.ts';
 import styles from './BookmarkList.module.css';
+
+const slotAt = (x: number, y: number) => {
+  const cell = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-slot]');
+  if (!cell || cell.dataset.occupied !== 'false') return null;
+  return Number(cell.dataset.slot);
+};
 
 const BookmarkList = () => {
   const selectedCategoryId = useAppStore((state) => state.selectedCategoryId);
@@ -25,11 +32,14 @@ const BookmarkList = () => {
     [selectedCategoryId],
   ) ?? [];
   const { bySlot, maxSlot } = layoutBookmarks(bookmarks, category?.positions ?? {});
-  const { drag, startDrag, ghostRef, positionRef } = useBookmarkDrag((bookmarkId, slot) => {
-    const layout = Object.fromEntries([...bySlot].map(([cellSlot, bookmark]) => [bookmark.id, cellSlot]));
-    void moveCategoryBookmark(selectedCategoryId, bookmarkId, slot, layout).catch((error) => {
-      toast.error(error instanceof Error ? error.message : 'Could not move bookmark.');
-    });
+  const { drag, startDrag, ghostRef, positionRef } = usePointerDrag<number, LocalBookmark>({
+    resolveTarget: slotAt,
+    onDrop: (bookmark, slot) => {
+      const layout = Object.fromEntries([...bySlot].map(([cellSlot, item]) => [item.id, cellSlot]));
+      void moveCategoryBookmark(selectedCategoryId, bookmark.id, slot, layout).catch((error) => {
+        toast.error(error instanceof Error ? error.message : 'Could not move bookmark.');
+      });
+    },
   });
   const cellCount = Math.ceil(maxSlot / 6) * 6 + (drag ? 6 : 0);
   const emptyMessage = selectedCategoryId === uncategorizedCategoryId ? 'No uncategorized bookmarks.' : 'No bookmarks in this category.';
@@ -53,7 +63,7 @@ const BookmarkList = () => {
       {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
       {drag && (
         <div ref={ghostRef} className={styles.ghost} style={{ transform: transformAt(positionRef.current.x, positionRef.current.y) }}>
-          <BookmarkItem bookmark={drag.bookmark} />
+          <BookmarkItem bookmark={drag.item} />
         </div>
       )}
       {isEditMode && (

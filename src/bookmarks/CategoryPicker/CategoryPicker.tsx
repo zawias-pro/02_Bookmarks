@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../persistence/database.ts'
 import { uncategorizedCategoryId } from '../../model/model.ts'
+import { categoryPaths, categoryRows } from '../../categories/tree.ts'
 import { Field } from '../../components/Field/Field.tsx'
 
 const CategoryPicker = ({
@@ -11,16 +12,15 @@ const CategoryPicker = ({
   onChange: (categoryId: string | null) => void
 }) => {
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? []
-  const visibleCategories = categories
-    .filter((category) => category.id !== uncategorizedCategoryId)
-    .sort((left, right) => left.name.localeCompare(right.name))
+  const visibleCategories = categories.filter((category) => category.id !== uncategorizedCategoryId)
+  const paths = categoryPaths(visibleCategories)
 
   return (
     <Field label="Category" htmlFor="bookmark-category">
       <select id="bookmark-category" value={categoryId ?? ''} onChange={(event) => onChange(event.target.value || null)}>
         <option value="">No category</option>
-        {visibleCategories.map((category) => (
-          <option key={category.id} value={category.id}>{category.name}</option>
+        {categoryRows(visibleCategories).map(({ category }) => (
+          <option key={category.id} value={category.id}>{paths.get(category.id)}</option>
         ))}
       </select>
     </Field>
