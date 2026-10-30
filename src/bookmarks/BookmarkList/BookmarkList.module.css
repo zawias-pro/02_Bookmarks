@@ -11,31 +11,34 @@
   min-width: 0;
 }
 
-.slot[data-occupied="false"]::before {
-  content: '';
+.target {
   display: block;
   width: min(100%, 4rem);
   margin: 0 auto 1.75rem;
   aspect-ratio: 1;
+  border-radius: var(--radius-md);
 }
 
-.dragging .slot {
-  border-radius: var(--radius-md);
+.list[data-dragging="true"] .target {
   outline: 1px dashed var(--color-border);
 }
 
-.dragging .slot[data-active="true"] {
-  outline-color: var(--color-accent);
+.slot[data-over="true"] .target {
+  outline: 1px solid var(--color-accent);
   background: var(--color-selected-bg);
 }
 
-.ghost {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 5;
+.handle[data-draggable="true"] {
+  touch-action: none;
+  user-select: none;
+}
+
+.handle[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.overlay {
   width: 5rem;
-  pointer-events: none;
   opacity: 0.85;
 }
 

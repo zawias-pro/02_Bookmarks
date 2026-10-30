@@ -43,9 +43,13 @@
   font-weight: 600;
 }
 
-.dragging .option {
+.row[data-draggable="true"] .option {
   touch-action: none;
   user-select: none;
+}
+
+.option[data-dragging="true"] {
+  opacity: 0.4;
 }
 
 .row[data-drop="inside"] .option {
@@ -71,13 +75,8 @@
   bottom: -0.2rem;
 }
 
-.ghost {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 5;
-  width: 12rem;
-  pointer-events: none;
+.overlay {
+  width: 100%;
   opacity: 0.9;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

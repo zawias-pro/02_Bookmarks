@@ -1,5 +1,18 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
 import { db } from '../../persistence/database.ts';
 import { uncategorizedCategoryId } from '../../model/model.ts';
 import type { LocalBookmark } from '../../model/model.ts';
@@ -9,14 +22,28 @@ import { Button } from '../../components/Button/Button.tsx';
 import { AddBookmarkForm } from '../AddBookmarkForm.tsx';
 import { EditBookmarkForm } from '../EditBookmarkForm.tsx';
 import { BookmarkItem } from '../BookmarkItem/BookmarkItem.tsx';
-import { transformAt, usePointerDrag } from '../../components/usePointerDrag.ts';
 import { layoutBookmarks } from './layout.ts';
 import styles from './BookmarkList.module.css';
 
-const slotAt = (x: number, y: number) => {
-  const cell = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-slot]');
-  if (!cell || cell.dataset.occupied !== 'false') return null;
-  return Number(cell.dataset.slot);
+const pointerSensorOptions = { activationConstraint: { distance: 6 } }
+
+const DraggableBookmark = ({ bookmark, disabled }: { bookmark: LocalBookmark; disabled: boolean }) => {
+  const { setNodeRef, listeners, isDragging } = useDraggable({ id: bookmark.id, disabled });
+  return (
+    <div ref={setNodeRef} className={styles.handle} data-draggable={disabled ? undefined : 'true'}
+         data-dragging={isDragging ? 'true' : undefined} {...listeners}>
+      <BookmarkItem bookmark={bookmark} />
+    </div>
+  );
+};
+
+const EmptySlot = ({ slot }: { slot: number }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: slot });
+  return (
+    <li ref={setNodeRef} className={styles.slot} data-over={isOver ? 'true' : undefined}>
+      <span className={styles.target} />
+    </li>
+  );
 };
 
 const BookmarkList = () => {
@@ -32,40 +59,47 @@ const BookmarkList = () => {
     [selectedCategoryId],
   ) ?? [];
   const { bySlot, maxSlot } = layoutBookmarks(bookmarks, category?.positions ?? {});
-  const { drag, startDrag, ghostRef, positionRef } = usePointerDrag<number, LocalBookmark>({
-    resolveTarget: slotAt,
-    onDrop: (bookmark, slot) => {
-      const layout = Object.fromEntries([...bySlot].map(([cellSlot, item]) => [item.id, cellSlot]));
-      void moveCategoryBookmark(selectedCategoryId, bookmark.id, slot, layout).catch((error) => {
-        toast.error(error instanceof Error ? error.message : 'Could not move bookmark.');
-      });
-    },
-  });
-  const cellCount = Math.ceil(maxSlot / 6) * 6 + (drag ? 6 : 0);
+  const [dragged, setDragged] = useState<LocalBookmark | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, pointerSensorOptions));
+
+  const startDrag = (event: DragStartEvent) => {
+    setDragged(bookmarks.find((bookmark) => bookmark.id === event.active.id) ?? null);
+  };
+
+  const endDrag = (event: DragEndEvent) => {
+    setDragged(null);
+    const slot = event.over?.id;
+    if (typeof slot !== 'number') return;
+    const layout = Object.fromEntries([...bySlot].map(([cellSlot, bookmark]) => [bookmark.id, cellSlot]));
+    void moveCategoryBookmark(selectedCategoryId, String(event.active.id), slot, layout).catch((error) => {
+      toast.error(error instanceof Error ? error.message : 'Could not move bookmark.');
+    });
+  };
+
+  const cellCount = Math.ceil(maxSlot / 6) * 6 + (dragged ? 6 : 0);
   const emptyMessage = selectedCategoryId === uncategorizedCategoryId ? 'No uncategorized bookmarks.' : 'No bookmarks in this category.';
 
   return (
     <div>
-      <ul className={drag ? `${styles.list} ${styles.dragging}` : styles.list}>
-        {Array.from({ length: cellCount }, (_unused, index) => index + 1).map((slot) => {
-          const bookmark = bySlot.get(slot);
-          return (
-            <li key={slot} className={styles.slot} data-slot={slot} data-occupied={bookmark ? 'true' : 'false'}
-                data-active={drag?.target === slot ? 'true' : undefined}>
-              {bookmark && (
-                <BookmarkItem bookmark={bookmark}
-                              onDragStart={isEditMode ? (event) => startDrag(bookmark, event) : undefined} />
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={startDrag}
+                  onDragEnd={endDrag} onDragCancel={() => setDragged(null)}>
+        <ul className={styles.list} data-dragging={dragged ? 'true' : undefined}>
+          {Array.from({ length: cellCount }, (_unused, index) => index + 1).map((slot) => {
+            const bookmark = bySlot.get(slot);
+            return bookmark
+              ? (
+                <li key={slot} className={styles.slot}>
+                  <DraggableBookmark bookmark={bookmark} disabled={!isEditMode} />
+                </li>
+              )
+              : <EmptySlot key={slot} slot={slot} />;
+          })}
+        </ul>
+        <DragOverlay dropAnimation={null}>
+          {dragged && <div className={styles.overlay}><BookmarkItem bookmark={dragged} /></div>}
+        </DragOverlay>
+      </DndContext>
       {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
-      {drag && (
-        <div ref={ghostRef} className={styles.ghost} style={{ transform: transformAt(positionRef.current.x, positionRef.current.y) }}>
-          <BookmarkItem bookmark={drag.item} />
-        </div>
-      )}
       {isEditMode && (
         <div className={styles.actions}>
           <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
