@@ -7,6 +7,7 @@ import { Button } from '../components/Button/Button.tsx'
 import { db } from '../persistence/database.ts'
 import { deleteBookmark, updateBookmark } from '../sync/sync.ts'
 import { useAppStore } from '../store/appStore.ts'
+import { BookmarkIconField } from './BookmarkIconField/BookmarkIconField.tsx'
 import { CategoryPicker } from './CategoryPicker/CategoryPicker.tsx'
 
 const EditBookmarkForm = () => {
@@ -63,6 +64,7 @@ const EditBookmarkForm = () => {
           <input id="edit-bookmark-link-input" type="url" value={link} onChange={(event) => setLink(event.target.value)} />
         </Field>
         <CategoryPicker categoryId={categoryId} onChange={setCategoryId} />
+        <BookmarkIconField bookmark={bookmark} />
         <Button type="submit">Save</Button>
         <Button type="button" variant="dangerGhost" onClick={() => void removeBookmark()}>Delete bookmark</Button>
       </form>

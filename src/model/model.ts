@@ -1,11 +1,23 @@
+// A custom icon is never replaced by an automatic reload.
+export type IconSource = 'auto' | 'custom';
+
 export interface LocalBookmark {
   id: string;
   remoteId?: string;
   title: string;
   link: string;
   favicon?: string;
+  iconSource?: IconSource;
   order: number;
   categoryId: string | null;
+  updatedAt: string;
+}
+
+// A local cache of the synced icon library; its id is the remote record id.
+export interface LocalIcon {
+  id: string;
+  name: string;
+  dataUrl: string;
   updatedAt: string;
 }
 

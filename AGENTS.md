@@ -27,6 +27,7 @@
 - Every category owns its board layout in `positions` (bookmark id to grid slot); the uncategorized board is a hidden category record with a fixed id, and empty slots are intentional gaps, never compacted.
 - There is no all-bookmarks view: the sidebar lists Uncategorized plus categories, and the selected view persists in localStorage.
 - `src/sync/sync.ts` contains the explicit force pull/push PocketBase synchronization for bookmarks and categories.
+- Bookmark icons resolve in `src/icons/favicon.ts` from the browser: the site's own CORS-readable icon first, then the icon.horse CDN for public hosts, because JavaScript cannot read cross-origin bytes without CORS. An upload lives in the synced `icons` library (`src/icons/library.ts`) and pins the bookmark with `iconSource: 'custom'`, which bulk reloads never overwrite.
 - `NetworkContext` uses browser online/offline events to disable remote sync controls only.
 - The PWA service worker is generated only by `npm run build`; `npm run dev` is not an offline/PWA test environment.
 - To test offline PWA behavior, build and run `npm run preview`, visit the app online until the service worker activates, then disconnect and reload.

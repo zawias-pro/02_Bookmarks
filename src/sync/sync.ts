@@ -2,11 +2,12 @@ import type { RecordModel } from 'pocketbase';
 import { db, createId } from '../persistence/database.ts';
 import { pb } from '../persistence/pocketbase.ts';
 import { categoryRows, descendantsOf, planCategoryDelete, planCategoryMove } from '../categories/tree.ts';
+import { dataUrlToFile, resolveFavicon } from '../icons/favicon.ts';
 import { uncategorizedCategoryId, uncategorizedCategoryName } from '../model/model.ts';
-import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
+import type { IconSource, LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { positions?: Record<string, number>; parent?: string };
-type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'order'> & { category?: string };
+type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'iconSource' | 'order'> & { category?: string };
 type Collection = OutboxMutation['collection'];
 type Notice = { kind: 'info' | 'conflict'; message: string };
 
@@ -20,40 +21,6 @@ const localByRemote = async (collection: Collection, remoteId: string) =>
   collection === 'bookmarks'
     ? (await db.bookmarks.where('remoteId').equals(remoteId).first())
     : (await db.categories.where('remoteId').equals(remoteId).first());
-
-const fetchFavicon = async (link: string) => {
-  const hostname = new URL(link).hostname;
-  const response = await fetch(`https://favicon.vemetric.com/${hostname}?size=64`);
-  if (!response.ok) throw new Error(`Could not fetch bookmark icon (${response.status}).`);
-  const blob = await response.blob();
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('Could not read bookmark icon.'));
-        return;
-      }
-      resolve(reader.result);
-    });
-    reader.addEventListener('error', () => reject(new Error('Could not read bookmark icon.')));
-    reader.readAsDataURL(blob);
-  });
-};
-
-const tryFetchFavicon = async (link: string) => {
-  try {
-    return await fetchFavicon(link);
-  } catch {
-    return undefined;
-  }
-};
-
-const dataUrlToFile = async (dataUrl: string) => {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-  const extension = blob.type.split('/')[1]?.replace('svg+xml', 'svg') || 'png';
-  return new File([blob], `favicon.${extension}`, { type: blob.type });
-};
 
 const faviconUrl = (bookmark: RemoteBookmark) => {
   if (!bookmark.favicon) return undefined;
@@ -82,6 +49,7 @@ const bookmarkFormData = async (snapshot: LocalBookmark, user?: string) => {
   data.set('title', snapshot.title);
   data.set('link', snapshot.link);
   data.set('order', String(snapshot.order));
+  data.set('iconSource', snapshot.iconSource === 'custom' ? 'custom' : 'auto');
   data.set('category', await remoteCategoryId(snapshot.categoryId));
   if (user) data.set('user', user);
   if (snapshot.favicon?.startsWith('data:')) data.set('favicon', await dataUrlToFile(snapshot.favicon));
@@ -245,20 +213,46 @@ const moveCategoryBookmark = async (categoryId: string, bookmarkId: string, slot
   void syncNow();
 };
 
+const saveBookmarkIcon = async (bookmark: LocalBookmark, favicon: string, iconSource: IconSource) => {
+  const updated = { ...bookmark, favicon, iconSource, updatedAt: new Date().toISOString() };
+  await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+    await db.bookmarks.put(updated);
+    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+  });
+};
+
 const createBookmark = async (input: { title: string; link: string; categoryId: string | null }) => {
   const title = input.title.trim();
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
-  const favicon = navigator.onLine === false ? undefined : await tryFetchFavicon(link);
+  const favicon = navigator.onLine === false ? undefined : await resolveFavicon(link);
   const id = createId();
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     const last = await db.bookmarks.orderBy('order').last();
-    const bookmark: LocalBookmark = { id, title, link, favicon, categoryId: input.categoryId, order: (last?.order ?? 0) + 1, updatedAt: new Date().toISOString() };
+    const bookmark: LocalBookmark = { id, title, link, favicon, iconSource: 'auto', categoryId: input.categoryId, order: (last?.order ?? 0) + 1, updatedAt: new Date().toISOString() };
     await db.bookmarks.add(bookmark);
     await enqueue({ collection: 'bookmarks', operation: 'create', entityId: bookmark.id, snapshot: bookmark });
   });
   void syncNow();
   return id;
+};
+
+const refreshBookmarkIcon = async (id: string) => {
+  const bookmark = await db.bookmarks.get(id);
+  if (!bookmark) throw new Error('Cannot refresh the bookmark icon because the bookmark does not exist locally.');
+  if (navigator.onLine === false) throw new Error('Connect to the internet before refreshing the bookmark icon.');
+  const favicon = await resolveFavicon(bookmark.link);
+  if (!favicon) throw new Error('This site exposes no readable icon. Upload one instead.');
+  if (favicon !== bookmark.favicon) await saveBookmarkIcon(bookmark, favicon, 'auto');
+  void syncNow();
+  return favicon;
+};
+
+const setBookmarkIcon = async (id: string, dataUrl: string) => {
+  const bookmark = await db.bookmarks.get(id);
+  if (!bookmark) throw new Error('Cannot set the bookmark icon because the bookmark does not exist locally.');
+  await saveBookmarkIcon(bookmark, dataUrl, 'custom');
+  void syncNow();
 };
 
 const reloadFavicons = async () => {
@@ -267,18 +261,19 @@ const reloadFavicons = async () => {
   await syncNow();
   const bookmarks = await db.bookmarks.toArray();
   let reloaded = 0;
+  let skipped = 0;
   for (const bookmark of bookmarks) {
-    const favicon = await tryFetchFavicon(bookmark.link);
-    if (!favicon) continue;
-    const updated = { ...bookmark, favicon, updatedAt: new Date().toISOString() };
-    await db.transaction('rw', db.bookmarks, db.outbox, async () => {
-      await db.bookmarks.put(updated);
-      await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
-    });
+    if (bookmark.iconSource === 'custom') {
+      skipped += 1;
+      continue;
+    }
+    const favicon = await resolveFavicon(bookmark.link);
+    if (!favicon || favicon === bookmark.favicon) continue;
+    await saveBookmarkIcon(bookmark, favicon, 'auto');
     reloaded += 1;
   }
   if (reloaded > 0) await syncNow();
-  return reloaded;
+  return { reloaded, skipped };
 };
 
 const updateBookmark = async (id: string, input: { title: string; link: string; categoryId: string | null }) => {
@@ -414,7 +409,8 @@ const pull = async () => {
     const local = await localByRemote('bookmarks', remote.id);
     const existingFavicon = local && 'favicon' in local ? local.favicon : undefined;
     const favicon = faviconUrl(remote);
-    const value = { title: remote.title, link: remote.link, favicon: favicon ?? existingFavicon, order: remote.order, categoryId: category?.id ?? null, updatedAt: remote.updated };
+    const iconSource: IconSource = remote.iconSource === 'custom' ? 'custom' : 'auto';
+    const value = { title: remote.title, link: remote.link, favicon: favicon ?? existingFavicon, iconSource, order: remote.order, categoryId: category?.id ?? null, updatedAt: remote.updated };
     if (local) await db.bookmarks.update(local.id, value);
     else await db.bookmarks.put({ id: remote.id, remoteId: remote.id, ...value });
   }
@@ -495,4 +491,4 @@ const syncNow = () => {
   return activeSync;
 };
 
-export { createBookmark, createCategory, deleteBookmark, deleteCategory, ensureUncategorizedCategory, moveCategory, moveCategoryBookmark, reloadFavicons, syncNow, updateBookmark, updateCategory };
+export { createBookmark, createCategory, deleteBookmark, deleteCategory, ensureUncategorizedCategory, moveCategory, moveCategoryBookmark, refreshBookmarkIcon, reloadFavicons, setBookmarkIcon, syncNow, updateBookmark, updateCategory };

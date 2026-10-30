@@ -15,8 +15,8 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const loadIcons = async () => {
     setIsLoadingIcons(true)
     try {
-      const count = await reloadFavicons()
-      toast.success(`Reloaded ${count} bookmark icon(s).`)
+      const { reloaded, skipped } = await reloadFavicons()
+      toast.success(`Reloaded ${reloaded} icon(s)${skipped > 0 ? `, kept ${skipped} custom` : ''}.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load bookmark icons.')
     } finally {

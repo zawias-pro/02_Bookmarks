@@ -57,6 +57,22 @@
       },
       {
         "system": false,
+        "id": "field_icon_source",
+        "name": "iconSource",
+        "type": "select",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "values": [
+            "auto",
+            "custom"
+          ],
+          "maxSelect": 1
+        }
+      },
+      {
+        "system": false,
         "id": "field_order",
         "name": "order",
         "type": "number",
@@ -191,6 +207,75 @@
       }
     ],
     "indexes": [],
+    "listRule": "@request.auth.id != '' && user = @request.auth.id",
+    "viewRule": "@request.auth.id != '' && user = @request.auth.id",
+    "createRule": "@request.auth.id != '' && user = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && user = @request.auth.id",
+    "deleteRule": "@request.auth.id != '' && user = @request.auth.id"
+  },
+  {
+    "id": "icons_coll_01",
+    "name": "icons",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "field_icon_name",
+        "name": "name",
+        "type": "text",
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 255,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "field_icon_image",
+        "name": "image",
+        "type": "file",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "image/svg+xml",
+            "image/x-icon"
+          ],
+          "thumbs": [],
+          "maxSelect": 1,
+          "maxSize": 5242880,
+          "protected": false
+        }
+      },
+      {
+        "system": false,
+        "id": "field_icon_user",
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_icon_user_name ON icons (user, name)"
+    ],
     "listRule": "@request.auth.id != '' && user = @request.auth.id",
     "viewRule": "@request.auth.id != '' && user = @request.auth.id",
     "createRule": "@request.auth.id != '' && user = @request.auth.id",

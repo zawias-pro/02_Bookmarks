@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
+import type { LocalBookmark, LocalCategory, LocalIcon, OutboxMutation } from '../model/model.ts';
 
 type LegacyTag = {
   id: string;
@@ -19,6 +19,7 @@ type LegacyOrderedCategory = Omit<LocalCategory, 'parentId' | 'order'> & { paren
 class BookmarksDatabase extends Dexie {
   bookmarks!: Table<LocalBookmark, string>;
   categories!: Table<LocalCategory, string>;
+  icons!: Table<LocalIcon, string>;
   outbox!: Table<OutboxMutation, string>;
 
   constructor() {
@@ -124,6 +125,14 @@ class BookmarksDatabase extends Dexie {
       const categories = await transaction.table<LegacyOrderedCategory>('categories').toArray();
       const ordered = [...categories].sort((left, right) => left.name.localeCompare(right.name));
       await transaction.table<LocalCategory>('categories').bulkPut(ordered.map((category, index) => ({ ...category, parentId: null, order: index })));
+    });
+    this.version(10).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      icons: 'id, name, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
     });
   }
 }

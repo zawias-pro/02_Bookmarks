@@ -2,6 +2,10 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Modal.module.css'
 
+// Escape and the body lock belong to the topmost modal only, so a picker opened from a
+// form does not close the form underneath it.
+const modalStack: symbol[] = []
+
 const Modal = ({
   titleId,
   onClose,
@@ -16,9 +20,11 @@ const Modal = ({
   onCloseRef.current = onClose
 
   useEffect(() => {
+    const token = Symbol('modal')
+    modalStack.push(token)
     const previousActiveElement = document.activeElement as HTMLElement | null
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current()
+      if (event.key === 'Escape' && modalStack.at(-1) === token) onCloseRef.current()
     }
 
     document.body.style.overflow = 'hidden'
@@ -27,7 +33,8 @@ const Modal = ({
     if (dialog && !dialog.contains(document.activeElement)) dialog.focus()
 
     return () => {
-      document.body.style.overflow = ''
+      modalStack.splice(modalStack.indexOf(token), 1)
+      if (modalStack.length === 0) document.body.style.overflow = ''
       document.removeEventListener('keydown', handleKeyDown)
       previousActiveElement?.focus()
     }
