@@ -10,6 +10,7 @@ type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { po
 type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'iconSource' | 'order'> & { category?: string };
 type Collection = OutboxMutation['collection'];
 type Notice = { kind: 'info' | 'conflict'; message: string };
+export type IconReloadProgress = { done: number; total: number; reloaded: number; skipped: number };
 
 const collectionFor = (collection: Collection) => pb.collection<RemoteBookmark | RemoteCategory>(collection);
 const isNotFound = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
@@ -240,6 +241,7 @@ const createBookmark = async (input: { title: string; link: string; categoryId: 
 const refreshBookmarkIcon = async (id: string) => {
   const bookmark = await db.bookmarks.get(id);
   if (!bookmark) throw new Error('Cannot refresh the bookmark icon because the bookmark does not exist locally.');
+  if (!pb.authStore.isValid) throw new Error('Sign in to PocketBase before refreshing the bookmark icon.');
   if (navigator.onLine === false) throw new Error('Connect to the internet before refreshing the bookmark icon.');
   const favicon = await resolveFavicon(bookmark.link);
   if (!favicon) throw new Error('This site exposes no readable icon. Upload one instead.');
@@ -255,21 +257,28 @@ const setBookmarkIcon = async (id: string, dataUrl: string) => {
   void syncNow();
 };
 
-const reloadFavicons = async () => {
+const iconBatchSize = 4;
+
+const reloadFavicons = async (onProgress?: (progress: IconReloadProgress) => void) => {
+  if (!pb.authStore.isValid) throw new Error('Sign in to PocketBase before reloading icons.');
   if (navigator.onLine === false) throw new Error('Connect to the internet before loading bookmark icons.');
   await syncNow();
   const bookmarks = await db.bookmarks.toArray();
   let reloaded = 0;
   let skipped = 0;
-  for (const bookmark of bookmarks) {
+  const reloadOne = async (bookmark: LocalBookmark) => {
     if (bookmark.iconSource === 'custom') {
       skipped += 1;
-      continue;
+      return;
     }
     const favicon = await resolveFavicon(bookmark.link);
-    if (!favicon || favicon === bookmark.favicon) continue;
+    if (!favicon || favicon === bookmark.favicon) return;
     await saveBookmarkIcon(bookmark, favicon, 'auto');
     reloaded += 1;
+  };
+  for (let index = 0; index < bookmarks.length; index += iconBatchSize) {
+    await Promise.all(bookmarks.slice(index, index + iconBatchSize).map(reloadOne));
+    onProgress?.({ done: Math.min(index + iconBatchSize, bookmarks.length), total: bookmarks.length, reloaded, skipped });
   }
   if (reloaded > 0) await syncNow();
   return { reloaded, skipped };
