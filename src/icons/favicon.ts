@@ -44,10 +44,15 @@ const fetchIconBytes = async (url: string) => {
 }
 
 // icon.horse answers an unknown host with a generated letter tile, which is opaque down to
-// its corners; a real icon keeps them transparent.
+// its corners; a real icon keeps them transparent. Bytes that do not decode are as useless.
 // shortcut: a genuine full-bleed square icon is dropped too, refresh by uploading it.
-const isGeneratedTile = async (blob: Blob) => {
-  const bitmap = await createImageBitmap(blob)
+const isUnusableCdnIcon = async (blob: Blob) => {
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(blob)
+  } catch {
+    return true
+  }
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Cannot inspect the icon because the canvas is unavailable.')
@@ -84,7 +89,7 @@ const siteIcon = async (link: string) => {
 const cdnIcon = async (link: string) => {
   const hostname = new URL(link).hostname
   const blob = await fetchIconBlob(`${iconCdnHost}/${hostname}`)
-  if (!blob || await isGeneratedTile(blob)) return undefined
+  if (!blob || await isUnusableCdnIcon(blob)) return undefined
   return await readBlob(blob)
 }
 

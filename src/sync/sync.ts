@@ -256,7 +256,6 @@ const setBookmarkIcon = async (id: string, dataUrl: string) => {
 };
 
 const reloadFavicons = async () => {
-  userId();
   if (navigator.onLine === false) throw new Error('Connect to the internet before loading bookmark icons.');
   await syncNow();
   const bookmarks = await db.bookmarks.toArray();
