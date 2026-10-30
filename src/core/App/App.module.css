@@ -27,33 +27,52 @@
     overflow-y: auto;
     padding: 2.5rem;
   }
+
+  .backdrop {
+    display: none;
+  }
+}
+
+@media (min-width: 701px) {
+  .app[data-sidebar-open="false"] > .sidebar {
+    display: none;
+  }
 }
 
 @media (max-width: 700px) {
   .app {
-    flex-direction: column;
-    height: auto;
+    height: 100vh;
     min-height: 0;
   }
 
   .app > .main {
-    order: 1;
-    flex-grow: 0;
     width: 100%;
-    height: auto;
-    overflow-y: visible;
+    height: 100%;
     padding: 1.5rem;
   }
 
   .app > .sidebar {
-    order: 2;
-    flex: none;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(320px, 85vw);
     min-width: 0;
-    width: 100%;
-    height: auto;
-    overflow-y: visible;
-    border-right: none;
+    border-right: 1px solid var(--color-border);
     border-left: none;
-    border-top: 1px solid var(--color-border);
+    box-shadow: 0 0 2rem rgb(0 0 0 / 0.25);
+    transform: translateX(-100%);
+    transition: transform 160ms ease;
+  }
+
+  .app[data-sidebar-open="true"] > .sidebar {
+    transform: translateX(0);
+  }
+
+  .app > .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgb(0 0 0 / 0.35);
   }
 }

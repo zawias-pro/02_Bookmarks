@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { isMobileLayout } from '../core/layout.ts'
 import { uncategorizedCategoryId } from '../model/model.ts'
 import { pb } from '../persistence/pocketbase.ts'
 import { readThemeSetting, resolveThemeSetting, themeMediaQuery, themeStorageKey, type Theme, type ThemeSetting } from '../theming/theme.ts'
@@ -22,6 +23,7 @@ type AppStore = {
   authUser: AuthUser | null
   isAuthChecked: boolean
   selectedCategoryId: string
+  isSidebarOpen: boolean
   realtimeStatus: RealtimeStatus
   themeSetting: ThemeSetting
   theme: Theme
@@ -34,6 +36,7 @@ type AppStore = {
   setEditingBookmarkId: (bookmarkId: string | null) => void
   setAuthChecked: (isChecked: boolean) => void
   setSelectedCategory: (categoryId: string) => void
+  setSidebarOpen: (isOpen: boolean) => void
   setRealtimeStatus: (status: RealtimeStatus) => void
   setThemeSetting: (setting: ThemeSetting) => void
   syncSystemTheme: (theme: Theme) => void
@@ -41,7 +44,11 @@ type AppStore = {
 
 const selectedCategoryStorageKey = 'bookmarks.selectedCategoryId'
 const previousSelectedCategoryStorageKey = 'bookmarks.selectedTagId'
+const sidebarStorageKey = 'bookmarks.isSidebarOpen'
 const initialThemeSetting = readThemeSetting()
+const storedSidebarOpen = localStorage.getItem(sidebarStorageKey)
+// The desktop collapse is remembered; the mobile drawer always starts closed.
+const initialSidebarOpen = !isMobileLayout() && storedSidebarOpen !== 'false'
 
 const useAppStore = create<AppStore>((set, get) => ({
   isAuthFormOpen: false,
@@ -56,6 +63,7 @@ const useAppStore = create<AppStore>((set, get) => ({
   selectedCategoryId: localStorage.getItem(selectedCategoryStorageKey)
     ?? localStorage.getItem(previousSelectedCategoryStorageKey)
     ?? uncategorizedCategoryId,
+  isSidebarOpen: initialSidebarOpen,
   realtimeStatus: 'off',
   themeSetting: initialThemeSetting,
   theme: resolveThemeSetting(initialThemeSetting),
@@ -70,6 +78,11 @@ const useAppStore = create<AppStore>((set, get) => ({
   setSelectedCategory: (categoryId) => {
     localStorage.setItem(selectedCategoryStorageKey, categoryId)
     set({ selectedCategoryId: categoryId })
+  },
+  setSidebarOpen: (isOpen) => {
+    // The mobile drawer is transient: only the desktop collapse is remembered.
+    if (!isMobileLayout()) localStorage.setItem(sidebarStorageKey, String(isOpen))
+    set({ isSidebarOpen: isOpen })
   },
   setRealtimeStatus: (status) => set({ realtimeStatus: status }),
   setThemeSetting: (setting) => {

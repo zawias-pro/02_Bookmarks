@@ -15,7 +15,7 @@ const Sidebar = () => {
   const [isSettingsOpen, setSettingsOpen] = useState(false)
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={styles.sidebar} id="sidebar">
       <header className={styles.navbar}>
         <h1 className={styles.brandTitle}>02_Bookmarks</h1>
         <div className={styles.actions}>
