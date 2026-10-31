@@ -35,3 +35,12 @@ Sign in at http://127.0.0.1:8090/_/ with:
 Email:    admin@admin.com
 Password: admin123
 ```
+
+## Known issues
+
+- Public signup is open by default and still has to be closed properly. PocketBase
+  ships the `users` collection with an empty `createRule`, so an unauthenticated
+  `POST /api/collections/users/records` registers an account, and no migration owns
+  that rule. Until it is handled, work around it by setting the rule in
+  Collections > users > API rules to a filter that never matches, such as `1 = 2`,
+  which makes an anonymous create answer `400`.
