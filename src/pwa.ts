@@ -1,7 +1,7 @@
 let serviceWorkerRegistration: Promise<ServiceWorkerRegistration | undefined> | undefined
 
 const appUpdateEvent = 'app-update-available'
-const appVersion = '0.13.1'
+const appVersion = '0.13.2'
 
 const notifyUpdateAvailable = (version: string) => {
   window.dispatchEvent(new CustomEvent(appUpdateEvent, { detail: { version } }))
@@ -61,7 +61,7 @@ const activatePendingWorker = async (registration: ServiceWorkerRegistration) =>
   return true
 }
 
-// A stale bundle talks to a server that already ran newer migrations, so it must never render.
+// A stale bundle talks to a server that already ran newer migrations, so it reloads on the next check, after paint.
 const reloadOutdatedApp = async () => {
   const registration = await registerAppServiceWorker()
   if (!registration) return
