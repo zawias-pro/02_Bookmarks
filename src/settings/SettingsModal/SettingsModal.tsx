@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '../../components/Button/Button.tsx'
 import { Modal } from '../../components/Modal/Modal.tsx'
@@ -10,14 +10,21 @@ import styles from './SettingsModal.module.css'
 
 const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [progress, setProgress] = useState<IconReloadProgress | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Closing the settings stops a reload that is still walking the bookmarks.
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const loadIcons = async () => {
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
-      const { reloaded, skipped } = await reloadFavicons(setProgress)
+      const { reloaded, skipped } = await reloadFavicons(setProgress, controller.signal)
       toast.success(`Reloaded ${reloaded} icon(s)${skipped > 0 ? `, kept ${skipped} custom` : ''}.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load bookmark icons.')
     } finally {
+      abortRef.current = null
       setProgress(null)
     }
   }

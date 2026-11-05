@@ -1,8 +1,10 @@
-import type { RecordModel } from 'pocketbase';
+import type { ClientResponseError, RecordModel } from 'pocketbase';
 import { db, createId } from '../persistence/database.ts';
 import { pb } from '../persistence/pocketbase.ts';
 import { categoryRows, descendantsOf, planCategoryDelete, planCategoryMove } from '../categories/tree.ts';
-import { dataUrlToFile, resolveFavicon } from '../icons/favicon.ts';
+import { dataUrlToFile, transcodeIcon } from '../icons/image.ts';
+import { faviconRejected } from '../icons/rejected.ts';
+import { resolveIcon } from '../icons/resolve.ts';
 import type { IconSource, LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { positions?: Record<string, number>; parent?: string };
@@ -15,6 +17,8 @@ const collectionFor = (collection: Collection) => pb.collection<RemoteBookmark |
 const isNotFound = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
 // PocketBase refuses a category delete with 400 while any bookmark still points at it.
 const isRefusedDelete = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 400;
+// A 400 means PocketBase validated the record and refused it, so resending the same fields cannot help.
+const isRefusedRecord = (error: unknown) => (error as ClientResponseError)?.status === 400;
 const userId = () => {
   if (!pb.authStore.isValid || !pb.authStore.record) throw new Error('Sign in to PocketBase before syncing.');
   return pb.authStore.record.id;
@@ -194,7 +198,7 @@ const createBookmark = async (input: { title: string; link: string; categoryId: 
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
   if (!input.categoryId) throw new Error('Create a category before adding a bookmark.');
-  const favicon = navigator.onLine === false ? undefined : await resolveFavicon(link);
+  const favicon = navigator.onLine === false ? undefined : await resolveIcon(link);
   const id = createId();
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     const last = await db.bookmarks.orderBy('order').last();
@@ -211,7 +215,7 @@ const refreshBookmarkIcon = async (id: string) => {
   if (!bookmark) throw new Error('Cannot refresh the bookmark icon because the bookmark does not exist locally.');
   if (!pb.authStore.isValid) throw new Error('Sign in to PocketBase before refreshing the bookmark icon.');
   if (navigator.onLine === false) throw new Error('Connect to the internet before refreshing the bookmark icon.');
-  const favicon = await resolveFavicon(bookmark.link);
+  const favicon = await resolveIcon(bookmark.link);
   if (!favicon) throw new Error('This site exposes no readable icon. Upload one instead.');
   if (favicon !== bookmark.favicon) await saveBookmarkIcon(bookmark, favicon, 'auto');
   void syncNow();
@@ -225,9 +229,10 @@ const setBookmarkIcon = async (id: string, dataUrl: string) => {
   void syncNow();
 };
 
+// Four in flight keep a reload moving without flooding the proxy routes with parallel fetches.
 const iconBatchSize = 4;
 
-const reloadFavicons = async (onProgress?: (progress: IconReloadProgress) => void) => {
+const reloadFavicons = async (onProgress?: (progress: IconReloadProgress) => void, signal?: AbortSignal) => {
   if (!pb.authStore.isValid) throw new Error('Sign in to PocketBase before reloading icons.');
   if (navigator.onLine === false) throw new Error('Connect to the internet before loading bookmark icons.');
   await syncNow();
@@ -239,12 +244,13 @@ const reloadFavicons = async (onProgress?: (progress: IconReloadProgress) => voi
       skipped += 1;
       return;
     }
-    const favicon = await resolveFavicon(bookmark.link);
+    const favicon = await resolveIcon(bookmark.link, signal);
     if (!favicon || favicon === bookmark.favicon) return;
     await saveBookmarkIcon(bookmark, favicon, 'auto');
     reloaded += 1;
   };
   for (let index = 0; index < bookmarks.length; index += iconBatchSize) {
+    if (signal?.aborted) break;
     await Promise.all(bookmarks.slice(index, index + iconBatchSize).map(reloadOne));
     onProgress?.({ done: Math.min(index + iconBatchSize, bookmarks.length), total: bookmarks.length, reloaded, skipped });
   }
@@ -285,9 +291,34 @@ const createRemote = async (mutation: OutboxMutation, snapshot: LocalBookmark | 
   return collectionFor(mutation.collection).create(await bookmarkFormData(bookmark, userId()));
 };
 
+// A refused icon is rasterised once and the record is sent again, instead of blocking the queue forever.
+const repairRejectedIcon = async (mutation: OutboxMutation, error: unknown, notice: (notice: Notice) => void) => {
+  if (mutation.collection !== 'bookmarks' || !faviconRejected(error)) return false;
+  const bookmark = mutation.snapshot as LocalBookmark;
+  if (!bookmark.favicon) return false;
+  const favicon = await transcodeIcon(bookmark.favicon).catch(() => undefined);
+  const updated = { ...bookmark, favicon, updatedAt: new Date().toISOString() };
+  await db.transaction('rw', db.bookmarks, db.outbox, async () => {
+    await db.bookmarks.update(mutation.entityId, { favicon });
+    await db.outbox.update(mutation.id, { snapshot: updated });
+  });
+  mutation.snapshot = updated;
+  if (!favicon) notice({ message: `The icon for "${bookmark.title}" could not be stored and was removed.` });
+  return true;
+};
+
+const remoteCall = async <T>(mutation: OutboxMutation, call: () => Promise<T>, notice: (notice: Notice) => void) => {
+  try {
+    return await call();
+  } catch (error) {
+    if (!await repairRejectedIcon(mutation, error, notice)) throw error;
+    return await call();
+  }
+};
+
 const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice) => void) => {
   if (mutation.operation === 'create') {
-    const remote = await createRemote(mutation, mutation.snapshot);
+    const remote = await remoteCall(mutation, () => createRemote(mutation, mutation.snapshot), notice);
     const remoteFavicon = mutation.collection === 'bookmarks' ? faviconUrl(remote as RemoteBookmark) : undefined;
     if (mutation.collection === 'bookmarks' && (mutation.snapshot as LocalBookmark).favicon?.startsWith('data:') && (!remoteFavicon || remoteFavicon.startsWith('data:'))) {
       throw new Error('PocketBase did not store the bookmark icon as a file.');
@@ -320,9 +351,10 @@ const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice
       return;
     }
   }
-  const updatedRemote = mutation.operation === 'delete' ? undefined : await collectionFor(mutation.collection).update(mutation.remoteId!, mutation.collection === 'bookmarks'
+  const sendUpdate = async () => collectionFor(mutation.collection).update(mutation.remoteId!, mutation.collection === 'bookmarks'
     ? await bookmarkFormData(mutation.snapshot as LocalBookmark)
     : await categoryFormData(mutation.snapshot as LocalCategory));
+  const updatedRemote = mutation.operation === 'delete' ? undefined : await remoteCall(mutation, sendUpdate, notice);
   const remoteFavicon = mutation.collection === 'bookmarks' && updatedRemote ? faviconUrl(updatedRemote as RemoteBookmark) : undefined;
   if (mutation.collection === 'bookmarks' && (mutation.snapshot as LocalBookmark).favicon?.startsWith('data:') && (!remoteFavicon || remoteFavicon.startsWith('data:'))) {
     throw new Error('PocketBase did not store the bookmark icon as a file.');
@@ -419,6 +451,8 @@ const pull = async () => {
 };
 
 let activeSync: Promise<void> | undefined;
+// A refused record stays pending, so it is reported once instead of on every sync.
+const announcedRefusals = new Set<string>();
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
   let timeoutId: number | undefined;
   try {
@@ -446,12 +480,35 @@ const runWorker = async () => {
     ...mutations.filter((mutation) => mutation.collection === 'categories').sort((left, right) => rankOf(left) - rankOf(right)),
     ...mutations.filter((mutation) => mutation.collection === 'bookmarks'),
   ];
-  for (const mutation of orderedMutations) await processMutation(mutation, (notice) => notices.push(notice));
+  let failure: unknown;
+  for (const mutation of orderedMutations) {
+    try {
+      await processMutation(mutation, (notice) => notices.push(notice));
+    } catch (error) {
+      // One rejected record must not hold back the rest of the queue; pending records stay pending.
+      if (!isRefusedRecord(error)) {
+        failure ??= error;
+        continue;
+      }
+      if (announcedRefusals.has(mutation.id)) continue;
+      announcedRefusals.add(mutation.id);
+      const snapshot = mutation.snapshot as LocalBookmark | LocalCategory;
+      const label = 'title' in snapshot ? snapshot.title : snapshot.name;
+      notices.push({ message: `The server refused "${label}"; it stays on this device.` });
+    }
+  }
   await pull();
   for (const notice of notices) window.dispatchEvent(new CustomEvent('sync-notice', { detail: notice }));
+  if (failure) throw failure;
 };
 const syncNow = () => {
-  activeSync ??= withTimeout(runWorker(), 15_000).finally(() => { activeSync = undefined; });
+  if (activeSync) return activeSync;
+  const work = runWorker();
+  // The timeout only rejects the caller, so the worker stays locked until it really ends: a second
+  // run over the same outbox rows would create the same records twice on the server.
+  const release = () => { activeSync = undefined; };
+  work.then(release, release);
+  activeSync = withTimeout(work, 15_000);
   return activeSync;
 };
 

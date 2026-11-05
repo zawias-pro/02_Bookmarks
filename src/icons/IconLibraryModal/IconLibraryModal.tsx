@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
 import { Button } from '../../components/Button/Button.tsx'
 import { Modal } from '../../components/Modal/Modal.tsx'
-import { readBlob } from '../favicon.ts'
+import { readImage } from '../image.ts'
 import { addIcon, deleteIcon, syncIcons } from '../library.ts'
 import { db } from '../../persistence/database.ts'
 import type { LocalIcon } from '../../model/model.ts'
@@ -32,7 +32,7 @@ const IconLibraryModal = ({ onClose, onSelect }: { onClose: () => void; onSelect
   }
 
   const upload = async (file: File) => {
-    const dataUrl = await readBlob(file)
+    const dataUrl = await readImage(file)
     await addIcon(name.trim() || file.name, dataUrl)
     setName('')
   }

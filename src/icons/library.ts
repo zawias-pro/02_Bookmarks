@@ -1,7 +1,7 @@
 import type { RecordModel } from 'pocketbase'
 import { db } from '../persistence/database.ts'
 import { pb } from '../persistence/pocketbase.ts'
-import { dataUrlToFile, fetchIconBytes } from './favicon.ts'
+import { dataUrlToFile, readImage } from './image.ts'
 import type { LocalIcon } from '../model/model.ts'
 
 // The library is server-owned: reading works offline from the cache, writing needs a connection.
@@ -14,9 +14,9 @@ const signedInUserId = () => {
 }
 
 const downloadIcon = async (record: RemoteIcon) => {
-  const dataUrl = await fetchIconBytes(pb.files.getURL(record, record.image))
-  if (!dataUrl) throw new Error(`Could not download icon "${record.name}".`)
-  return dataUrl
+  const response = await fetch(pb.files.getURL(record, record.image))
+  if (!response.ok) throw new Error(`Could not download icon "${record.name}".`)
+  return await readImage(await response.blob())
 }
 
 const syncIcons = async () => {

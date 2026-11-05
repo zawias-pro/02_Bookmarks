@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '../../components/Button/Button.tsx'
-import { readBlob } from '../../icons/favicon.ts'
+import { readImage } from '../../icons/image.ts'
 import { addIcon } from '../../icons/library.ts'
 import { IconLibraryModal } from '../../icons/IconLibraryModal/IconLibraryModal.tsx'
 import { refreshBookmarkIcon, setBookmarkIcon } from '../../sync/sync.ts'
@@ -25,7 +25,7 @@ const BookmarkIconField = ({ bookmark }: { bookmark: LocalBookmark }) => {
   }
 
   const upload = async (file: File) => {
-    const dataUrl = await readBlob(file)
+    const dataUrl = await readImage(file)
     await addIcon(bookmark.title, dataUrl)
     await setBookmarkIcon(bookmark.id, dataUrl)
   }
