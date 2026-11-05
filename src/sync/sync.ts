@@ -8,7 +8,7 @@ import type { IconSource, LocalBookmark, LocalCategory, OutboxMutation } from '.
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { positions?: Record<string, number>; parent?: string };
 type RemoteBookmark = RecordModel & Pick<LocalBookmark, 'title' | 'link' | 'favicon' | 'iconSource' | 'order'> & { category?: string };
 type Collection = OutboxMutation['collection'];
-type Notice = { kind: 'info' | 'conflict'; message: string };
+type Notice = { message: string };
 export type IconReloadProgress = { done: number; total: number; reloaded: number; skipped: number };
 
 const collectionFor = (collection: Collection) => pb.collection<RemoteBookmark | RemoteCategory>(collection);
@@ -85,7 +85,6 @@ const enqueue = async (mutation: Omit<OutboxMutation, 'id' | 'createdAt'>) => {
     ...mutation,
     operation: createMutation ? 'create' : mutation.operation,
     remoteId: createMutation ? undefined : mutation.remoteId,
-    baseRemoteUpdatedAt: createMutation ? undefined : mutation.baseRemoteUpdatedAt,
     id: createId(),
     createdAt: createMutation?.createdAt ?? new Date().toISOString(),
   });
@@ -121,7 +120,7 @@ const updateCategory = async (id: string, name: string) => {
     if (!category) throw new Error('Cannot update category because it does not exist locally.');
     const updated = { ...category, name: trimmed, updatedAt: new Date().toISOString() };
     await db.categories.put(updated);
-    await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: updated });
+    await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: id, remoteId: category.remoteId, snapshot: updated });
   });
   void syncNow();
 };
@@ -141,10 +140,10 @@ const deleteCategory = async (id: string) => {
       if (!child) throw new Error(`Cannot delete category because its child ${move.id} does not exist locally.`);
       const updated = { ...child, ...move, updatedAt: new Date().toISOString() };
       await db.categories.put(updated);
-      await enqueue({ collection: 'categories', operation: child.remoteId ? 'update' : 'create', entityId: child.id, remoteId: child.remoteId, baseRemoteUpdatedAt: child.remoteId ? child.updatedAt : undefined, snapshot: updated });
+      await enqueue({ collection: 'categories', operation: child.remoteId ? 'update' : 'create', entityId: child.id, remoteId: child.remoteId, snapshot: updated });
     }
     await db.categories.delete(id);
-    await enqueue({ collection: 'categories', operation: 'delete', entityId: id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: category });
+    await enqueue({ collection: 'categories', operation: 'delete', entityId: id, remoteId: category.remoteId, snapshot: category });
   });
   void syncNow();
 };
@@ -158,7 +157,7 @@ const moveCategory = async (id: string, parentId: string | null, index: number) 
       if (!category) throw new Error(`Cannot move category because ${move.id} does not exist locally.`);
       const updated = { ...category, ...move, updatedAt: now };
       await db.categories.put(updated);
-      await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: category.id, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: updated });
+      await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: category.id, remoteId: category.remoteId, snapshot: updated });
     }
   });
   void syncNow();
@@ -177,7 +176,7 @@ const moveCategoryBookmark = async (categoryId: string, bookmarkId: string, slot
     if (Object.entries(merged).some(([id, value]) => value === slot && id !== bookmarkId)) throw new Error('Cannot move bookmark because the target slot is occupied.');
     const updated = { ...category, positions: merged, updatedAt: new Date().toISOString() };
     await db.categories.put(updated);
-    await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: categoryId, remoteId: category.remoteId, baseRemoteUpdatedAt: category.remoteId ? category.updatedAt : undefined, snapshot: updated });
+    await enqueue({ collection: 'categories', operation: category.remoteId ? 'update' : 'create', entityId: categoryId, remoteId: category.remoteId, snapshot: updated });
   });
   void syncNow();
 };
@@ -186,7 +185,7 @@ const saveBookmarkIcon = async (bookmark: LocalBookmark, favicon: string, iconSo
   const updated = { ...bookmark, favicon, iconSource, updatedAt: new Date().toISOString() };
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     await db.bookmarks.put(updated);
-    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, snapshot: updated });
   });
 };
 
@@ -263,7 +262,7 @@ const updateBookmark = async (id: string, input: { title: string; link: string; 
     if (!bookmark) throw new Error('Cannot update bookmark because it does not exist locally.');
     const updated = { ...bookmark, title, link, categoryId: input.categoryId, updatedAt: new Date().toISOString() };
     await db.bookmarks.put(updated);
-    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+    await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: id, remoteId: bookmark.remoteId, snapshot: updated });
   });
   void syncNow();
 };
@@ -273,7 +272,7 @@ const deleteBookmark = async (id: string) => {
     const bookmark = await db.bookmarks.get(id);
     if (!bookmark) throw new Error('Cannot delete bookmark because it does not exist locally.');
     await db.bookmarks.delete(id);
-    await enqueue({ collection: 'bookmarks', operation: 'delete', entityId: id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: bookmark });
+    await enqueue({ collection: 'bookmarks', operation: 'delete', entityId: id, remoteId: bookmark.remoteId, snapshot: bookmark });
   });
   void syncNow();
 };
@@ -284,20 +283,6 @@ const createRemote = async (mutation: OutboxMutation, snapshot: LocalBookmark | 
   }
   const bookmark = snapshot as LocalBookmark;
   return collectionFor(mutation.collection).create(await bookmarkFormData(bookmark, userId()));
-};
-
-const conflictCopy = async (mutation: OutboxMutation, remote: RemoteBookmark | RemoteCategory | undefined, notice: (notice: Notice) => void) => {
-  const snapshot = mutation.snapshot;
-  const copy = { ...snapshot, id: createId(), remoteId: undefined, ...(mutation.collection === 'bookmarks' ? { title: `${(snapshot as LocalBookmark).title} (conflict copy)` } : { name: `${(snapshot as LocalCategory).name} (conflict copy)` }), updatedAt: new Date().toISOString() } as LocalBookmark | LocalCategory;
-  const created = await createRemote({ ...mutation, operation: 'create' }, copy);
-  const linked = { ...copy, remoteId: created.id, updatedAt: created.updated } as LocalBookmark | LocalCategory;
-  await db.transaction('rw', db.bookmarks, db.categories, db.outbox, async () => {
-    if (mutation.collection === 'bookmarks') await db.bookmarks.add(linked as LocalBookmark);
-    else await db.categories.add(linked as LocalCategory);
-    await db.outbox.delete(mutation.id);
-  });
-  notice({ kind: 'conflict', message: `${mutation.collection === 'bookmarks' ? 'Bookmark' : 'Category'} conflict preserved as a copy.` });
-  return remote;
 };
 
 const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice) => void) => {
@@ -318,11 +303,11 @@ const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice
   try {
     remote = await collectionFor(mutation.collection).getOne(mutation.remoteId!);
   } catch (error) {
-    if (mutation.operation === 'delete' && isNotFound(error)) { await db.outbox.delete(mutation.id); return; }
-    if (isNotFound(error)) { await conflictCopy(mutation, undefined, notice); return; }
-    throw error;
+    if (!isNotFound(error)) throw error;
+    // The record is gone on the server, so the pull that follows removes the local one.
+    await db.outbox.delete(mutation.id);
+    return;
   }
-  if (remote.updated !== mutation.baseRemoteUpdatedAt) { await conflictCopy(mutation, remote, notice); return; }
   if (mutation.operation === 'delete') {
     try {
       await collectionFor(mutation.collection).delete(mutation.remoteId!);
@@ -331,7 +316,7 @@ const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice
       // Another device gave this category bookmarks, so the server keeps it. Dropping the mutation
       // lets the pull that follows restore the category instead of blocking sync forever.
       await db.outbox.delete(mutation.id);
-      notice({ kind: 'info', message: `Category "${(mutation.snapshot as LocalCategory).name}" still holds bookmarks on another device and was restored.` });
+      notice({ message: `Category "${(mutation.snapshot as LocalCategory).name}" still holds bookmarks on another device and was restored.` });
       return;
     }
   }

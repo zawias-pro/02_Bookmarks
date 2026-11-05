@@ -38,7 +38,6 @@ export interface OutboxMutation {
   operation: 'create' | 'update' | 'delete';
   entityId: string;
   remoteId?: string;
-  baseRemoteUpdatedAt?: string;
   snapshot: LocalBookmark | LocalCategory;
   createdAt: string;
 }

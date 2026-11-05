@@ -57,9 +57,7 @@ const useRealtimeSync = () => {
     };
     const handlePageShow = () => void run();
     const handleNotice = (event: Event) => {
-      const notice = (event as CustomEvent<{ kind: 'info' | 'conflict'; message: string }>).detail;
-      if (notice.kind === 'conflict') toast.warning(notice.message);
-      else toast.info(notice.message);
+      toast.info((event as CustomEvent<{ message: string }>).detail.message);
     };
     const unsubscribeAll = async () => {
       await unsubscribeBookmarks?.();
