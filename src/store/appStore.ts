@@ -41,8 +41,6 @@ type AppStore = {
   syncSystemTheme: (theme: Theme) => void
 }
 
-const selectedCategoryStorageKey = 'bookmarks.selectedCategoryId'
-const previousSelectedCategoryStorageKey = 'bookmarks.selectedTagId'
 const sidebarStorageKey = 'bookmarks.isSidebarOpen'
 const initialThemeSetting = readThemeSetting()
 const storedSidebarOpen = localStorage.getItem(sidebarStorageKey)
@@ -59,9 +57,8 @@ const useAppStore = create<AppStore>((set, get) => ({
   editingBookmarkId: null,
   authUser: pb.authStore.record as AuthUser | null,
   isAuthChecked: false,
-  selectedCategoryId: localStorage.getItem(selectedCategoryStorageKey)
-    ?? localStorage.getItem(previousSelectedCategoryStorageKey)
-    ?? '',
+  // Empty until the category rows load: the first row is then selected by the sidebar.
+  selectedCategoryId: '',
   isSidebarOpen: initialSidebarOpen,
   realtimeStatus: 'off',
   themeSetting: initialThemeSetting,
@@ -74,10 +71,7 @@ const useAppStore = create<AppStore>((set, get) => ({
   setBookmarkFormOpen: (isOpen) => set({ isBookmarkFormOpen: isOpen }),
   setEditingBookmarkId: (bookmarkId) => set({ editingBookmarkId: bookmarkId }),
   setAuthChecked: (isChecked) => set({ isAuthChecked: isChecked }),
-  setSelectedCategory: (categoryId) => {
-    localStorage.setItem(selectedCategoryStorageKey, categoryId)
-    set({ selectedCategoryId: categoryId })
-  },
+  setSelectedCategory: (categoryId) => set({ selectedCategoryId: categoryId }),
   setSidebarOpen: (isOpen) => {
     // The mobile drawer is transient: only the desktop collapse is remembered.
     if (!isMobileLayout()) localStorage.setItem(sidebarStorageKey, String(isOpen))

@@ -27,7 +27,7 @@
 - Both drag surfaces use `@dnd-kit/core` in edit mode: the sidebar drags category rows with before/inside/after zones, the board drags bookmarks onto empty grid slots. Keep new drag rules in those two components, not in a shared hook.
 - Every bookmark belongs to exactly one category (`categoryId`); there are no uncategorized bookmarks and the PocketBase field is required.
 - Every category owns its board layout in `positions` (bookmark id to grid slot); empty slots are intentional gaps, never compacted.
-- There is no all-bookmarks view: the sidebar lists categories and the selected view persists in localStorage.
+- There is no all-bookmarks view: the sidebar lists categories and the first row is selected on every app open; the selection is not persisted.
 - `pb_hooks/users.pb.js` gives every new account one category named "Unnamed"; clients never invent a category, so a fresh signed-out install has none until one is added.
 - A category can be deleted only when it is not the last one and holds no bookmarks; `deleteCategory` throws, and the form shows the message as a toast. Its sub-categories take its place among its siblings.
 - `src/sync/sync.ts` contains the explicit force pull/push PocketBase synchronization for bookmarks and categories. One record the server refuses with a 400 stays pending and is reported once; a transport failure still fails the whole sync.
