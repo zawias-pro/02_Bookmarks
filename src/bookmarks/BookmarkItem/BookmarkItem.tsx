@@ -1,7 +1,11 @@
 import type { MouseEvent } from 'react'
+import { isStandaloneApp } from '../../core/layout.ts'
 import type { LocalBookmark } from '../../model/model.ts'
 import { useAppStore } from '../../store/appStore.ts'
 import styles from './BookmarkItem.module.css'
+
+// A link must not take over the installed app window, so it opens in a browser-backed view instead.
+const linkTarget = isStandaloneApp() ? '_blank' : '_self'
 
 const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
   const isEditMode = useAppStore((state) => state.isEditMode)
@@ -15,7 +19,7 @@ const BookmarkItem = ({ bookmark }: { bookmark: LocalBookmark }) => {
 
   return (
     <a className={isEditMode ? `${styles.link} ${styles.draggable}` : styles.link}
-       href={bookmark.link} target="_self" rel="noopener noreferrer" title={bookmark.title}
+       href={bookmark.link} target={linkTarget} rel="noopener noreferrer" title={bookmark.title}
        draggable={false} onClick={handleClick}>
       <span className={styles.icon}>
         {bookmark.favicon
