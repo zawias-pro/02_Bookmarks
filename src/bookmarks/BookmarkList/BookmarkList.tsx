@@ -14,7 +14,6 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { db } from '../../persistence/database.ts';
-import { uncategorizedCategoryId } from '../../model/model.ts';
 import type { LocalBookmark } from '../../model/model.ts';
 import { moveCategoryBookmark } from '../../sync/sync.ts';
 import { useAppStore } from '../../store/appStore.ts';
@@ -52,10 +51,9 @@ const BookmarkList = () => {
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen);
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen);
   const category = useLiveQuery(() => db.categories.get(selectedCategoryId), [selectedCategoryId]);
+  const categories = useLiveQuery(() => db.categories.count(), []) ?? 0;
   const bookmarks = useLiveQuery(
-    () => selectedCategoryId === uncategorizedCategoryId
-      ? db.bookmarks.filter((bookmark) => bookmark.categoryId === null).toArray()
-      : db.bookmarks.where('categoryId').equals(selectedCategoryId).toArray(),
+    () => db.bookmarks.where('categoryId').equals(selectedCategoryId).toArray(),
     [selectedCategoryId],
   ) ?? [];
   const { bySlot, maxSlot } = layoutBookmarks(bookmarks, category?.positions ?? {});
@@ -77,7 +75,7 @@ const BookmarkList = () => {
   };
 
   const cellCount = Math.ceil(maxSlot / 6) * 6 + (dragged ? 6 : 0);
-  const emptyMessage = selectedCategoryId === uncategorizedCategoryId ? 'No uncategorized bookmarks.' : 'No bookmarks in this category.';
+  const emptyMessage = categories === 0 ? 'Create a category to add bookmarks.' : 'No bookmarks in this category.';
 
   return (
     <div>
@@ -100,7 +98,7 @@ const BookmarkList = () => {
         </DragOverlay>
       </DndContext>
       {bookmarks.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
-      {isEditMode && (
+      {isEditMode && categories > 0 && (
         <div className={styles.actions}>
           <Button onClick={() => setBookmarkFormOpen(true)}>Add bookmark</Button>
         </div>

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { isMobileLayout } from '../core/layout.ts'
-import { uncategorizedCategoryId } from '../model/model.ts'
 import { pb } from '../persistence/pocketbase.ts'
 import { readThemeSetting, resolveThemeSetting, themeMediaQuery, themeStorageKey, type Theme, type ThemeSetting } from '../theming/theme.ts'
 import type { RecordModel } from 'pocketbase'
@@ -62,7 +61,7 @@ const useAppStore = create<AppStore>((set, get) => ({
   isAuthChecked: false,
   selectedCategoryId: localStorage.getItem(selectedCategoryStorageKey)
     ?? localStorage.getItem(previousSelectedCategoryStorageKey)
-    ?? uncategorizedCategoryId,
+    ?? '',
   isSidebarOpen: initialSidebarOpen,
   realtimeStatus: 'off',
   themeSetting: initialThemeSetting,

@@ -107,6 +107,10 @@ const planCategoryMove = (categories: LocalCategory[], movingId: string, parentI
   return moves
 }
 
+// The category legacy uncategorized bookmarks move to: one already named for it, else the first row the sidebar shows.
+const chooseDefaultCategory = (categories: LocalCategory[], name: string) =>
+  categories.find((category) => category.name === name) ?? categoryRows(categories)[0]?.category
+
 // Deleting a category moves its children into its own place, after its remaining siblings.
 const planCategoryDelete = (categories: LocalCategory[], id: string): CategoryMove[] => {
   const deleted = categories.find((category) => category.id === id)
@@ -120,4 +124,4 @@ const planCategoryDelete = (categories: LocalCategory[], id: string): CategoryMo
   return moves
 }
 
-export { canMoveCategory, categoryPaths, categoryRows, categorySiblings, descendantsOf, planCategoryDelete, planCategoryMove }
+export { canMoveCategory, categoryPaths, categoryRows, categorySiblings, chooseDefaultCategory, descendantsOf, planCategoryDelete, planCategoryMove }

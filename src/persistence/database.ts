@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { LocalBookmark, LocalCategory, LocalIcon, OutboxMutation } from '../model/model.ts';
+import { chooseDefaultCategory } from '../categories/tree.ts';
 
 type LegacyTag = {
   id: string;
@@ -133,6 +134,53 @@ class BookmarksDatabase extends Dexie {
       profiles: 'id',
       tombstones: 'id, remoteId, collection',
       outbox: 'id, createdAt, collection, entityId, remoteId',
+    });
+    // The hidden uncategorized board is gone: every bookmark gets a real category, and the record
+    // whose fixed id older clients shared is dropped together with its mutations.
+    this.version(11).stores({
+      bookmarks: 'id, remoteId, updatedAt, order, categoryId',
+      categories: 'id, remoteId, name, createdAt, updatedAt',
+      icons: 'id, name, updatedAt',
+      profiles: 'id',
+      tombstones: 'id, remoteId, collection',
+      outbox: 'id, createdAt, collection, entityId, remoteId',
+    }).upgrade(async (transaction) => {
+      const legacyId = 'untaggedtag0000';
+      const categories = transaction.table<LocalCategory>('categories');
+      const bookmarks = transaction.table<LocalBookmark>('bookmarks');
+      const outbox = transaction.table<OutboxMutation>('outbox');
+      const legacy = await categories.get(legacyId);
+      const affected = [
+        ...await bookmarks.filter((bookmark) => !bookmark.categoryId).toArray(),
+        ...(legacy ? await bookmarks.where('categoryId').equals(legacyId).toArray() : []),
+      ];
+      await outbox.where('entityId').equals(legacyId).delete();
+      await categories.delete(legacyId);
+      if (affected.length === 0) return;
+      // Inline, because an upgrade must keep choosing the name it shipped with.
+      const legacyDefaultName = 'Unnamed';
+      const now = new Date().toISOString();
+      // Nothing to move to means the device kept bookmarks but deleted its last category; that state
+      // cannot be created any more, so the repair names the default category itself.
+      const existing = chooseDefaultCategory(await categories.toArray(), legacyDefaultName);
+      const target: LocalCategory = existing ?? {
+        id: createId(),
+        name: legacyDefaultName,
+        parentId: null,
+        order: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (!existing) {
+        await categories.put(target);
+        await outbox.put({ id: createId(), collection: 'categories', operation: 'create', entityId: target.id, snapshot: target, createdAt: now });
+      }
+      // updatedAt stays the server's value, because it is the conflict base for the next push.
+      await categories.update(target.id, { positions: { ...target.positions, ...legacy?.positions } });
+      await bookmarks.bulkPut(affected.map((bookmark) => ({ ...bookmark, categoryId: target.id })));
+      const moved = new Set(affected.map((bookmark) => bookmark.id));
+      await outbox.filter((mutation) => mutation.collection === 'bookmarks' && moved.has(mutation.entityId))
+        .modify((mutation) => { mutation.snapshot = { ...mutation.snapshot, categoryId: target.id }; });
     });
   }
 }

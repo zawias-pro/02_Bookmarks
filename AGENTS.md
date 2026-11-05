@@ -25,9 +25,11 @@
 - Dexie categories are local-first too; `src/core/Sidebar/Sidebar.tsx` owns category creation and filtering.
 - Categories form a tree: `parentId` (`null` at top level) and `order` within their parent, at most three levels deep. The sidebar renders it flat with indents, and `src/categories/tree.ts` holds the pure tree, move and delete planning.
 - Both drag surfaces use `@dnd-kit/core` in edit mode: the sidebar drags category rows with before/inside/after zones, the board drags bookmarks onto empty grid slots. Keep new drag rules in those two components, not in a shared hook.
-- A bookmark belongs to at most one category (`categoryId`, `null` when uncategorized); there are no multi-category bookmarks.
-- Every category owns its board layout in `positions` (bookmark id to grid slot); the uncategorized board is a hidden category record with a fixed id, and empty slots are intentional gaps, never compacted.
-- There is no all-bookmarks view: the sidebar lists Uncategorized plus categories, and the selected view persists in localStorage.
+- Every bookmark belongs to exactly one category (`categoryId`); there are no uncategorized bookmarks and the PocketBase field is required.
+- Every category owns its board layout in `positions` (bookmark id to grid slot); empty slots are intentional gaps, never compacted.
+- There is no all-bookmarks view: the sidebar lists categories and the selected view persists in localStorage.
+- `pb_hooks/users.pb.js` gives every new account one category named "Unnamed"; clients never invent a category, so a fresh signed-out install has none until one is added.
+- A category can be deleted only when it is not the last one and holds no bookmarks; `deleteCategory` throws, and the form shows the message as a toast. Its sub-categories take its place among its siblings.
 - `src/sync/sync.ts` contains the explicit force pull/push PocketBase synchronization for bookmarks and categories.
 - Bookmark icons resolve in `src/icons/favicon.ts` through the PocketBase route in `pb_hooks/icon-proxy.pb.js`: the browser cannot read cross-origin icon bytes, so the server fetches the site's own icon, page or declared `<link rel="icon">` and streams the bytes back. The route needs a session and refuses private hosts. There is no third-party icon CDN. An upload lives in the synced `icons` library (`src/icons/library.ts`) and pins the bookmark with `iconSource: 'custom'`, which bulk reloads never overwrite.
 - `NetworkContext` uses browser online/offline events to disable remote sync controls only.

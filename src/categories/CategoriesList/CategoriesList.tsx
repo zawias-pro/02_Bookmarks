@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
@@ -17,7 +17,6 @@ import {
 } from '@dnd-kit/core'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { db } from '../../persistence/database.ts'
-import { uncategorizedCategoryId } from '../../model/model.ts'
 import type { LocalCategory } from '../../model/model.ts'
 import { moveCategory } from '../../sync/sync.ts'
 import { canMoveCategory, categoryPaths, categoryRows, categorySiblings } from '../tree.ts'
@@ -91,40 +90,33 @@ const CategoryRow = ({
 }
 
 const CategoriesList = () => {
-  const categories = useLiveQuery(() => db.categories.toArray(), [])
-  const visibleCategories = (categories ?? []).filter((category) => category.id !== uncategorizedCategoryId)
-  const rows = categoryRows(visibleCategories)
-  const paths = categoryPaths(visibleCategories)
-  // A synced hidden board means this account's categories already arrived once, so an absent one is really gone.
-  const hasSynced = categories?.some((category) => category.id === uncategorizedCategoryId && Boolean(category.remoteId)) ?? false
+  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? []
+  const rows = categoryRows(categories)
+  const paths = categoryPaths(categories)
   const selectedCategoryId = useAppStore((state) => state.selectedCategoryId)
   const setSelectedCategory = useAppStore((state) => state.setSelectedCategory)
   const isEditMode = useAppStore((state) => state.isEditMode)
-  const seenCategoryId = useRef<string | null>(null)
   const [dragged, setDragged] = useState<LocalCategory | null>(null)
   const [target, setTarget] = useState<DropTarget | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, pointerSensorOptions))
 
+  // A bookmark list needs a category: a deleted or not yet pulled selection falls back to the first row.
   useEffect(() => {
-    if (selectedCategoryId === uncategorizedCategoryId) return
-    if (visibleCategories.some((category) => category.id === selectedCategoryId)) {
-      seenCategoryId.current = selectedCategoryId
-      return
-    }
-    if (visibleCategories.length > 0 || seenCategoryId.current === selectedCategoryId || hasSynced) setSelectedCategory(uncategorizedCategoryId)
-  }, [visibleCategories, selectedCategoryId, setSelectedCategory, hasSynced])
+    if (rows.some(({ category }) => category.id === selectedCategoryId)) return
+    setSelectedCategory(rows[0]?.category.id ?? '')
+  }, [rows, selectedCategoryId, setSelectedCategory])
 
   const startDrag = (event: DragStartEvent) => {
-    setDragged(visibleCategories.find((category) => category.id === event.active.id) ?? null)
+    setDragged(categories.find((category) => category.id === event.active.id) ?? null)
   }
 
   const moveDrag = (event: DragMoveEvent) => {
-    const next = resolveTarget(event, visibleCategories)
+    const next = resolveTarget(event, categories)
     setTarget((current) => current && next && current.rowId === next.rowId && current.zone === next.zone ? current : next)
   }
 
   const endDrag = (event: DragEndEvent) => {
-    const drop = resolveTarget(event, visibleCategories)
+    const drop = resolveTarget(event, categories)
     setDragged(null)
     setTarget(null)
     if (!drop) return
@@ -138,19 +130,11 @@ const CategoriesList = () => {
     setTarget(null)
   }
 
-  const optionClass = (isSelected: boolean) => isSelected ? `${styles.option} ${styles.selected}` : styles.option
-
   return (
     <nav aria-label="Categories">
       <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragStart={startDrag}
                   onDragMove={moveDrag} onDragEnd={endDrag} onDragCancel={cancelDrag}>
         <ul className={styles.list}>
-          <li>
-            <button className={optionClass(selectedCategoryId === uncategorizedCategoryId)} type="button"
-                    onClick={() => setSelectedCategory(uncategorizedCategoryId)}>
-              Uncategorized
-            </button>
-          </li>
           {rows.map(({ category, depth }) => (
             <CategoryRow key={category.id} category={category} depth={depth} label={paths.get(category.id) ?? category.name}
                          selected={selectedCategoryId === category.id} disabled={!isEditMode}

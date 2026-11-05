@@ -1,6 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../persistence/database.ts'
-import { uncategorizedCategoryId } from '../../model/model.ts'
 import { useAppStore } from '../../store/appStore.ts'
 import { Button } from '../../components/Button/Button.tsx'
 import { EditCategoryForm } from '../EditCategoryForm.tsx'
@@ -13,8 +12,8 @@ const CategoryHeader = () => {
   const setSidebarOpen = useAppStore((state) => state.setSidebarOpen)
   const setCategoryEditFormOpen = useAppStore((state) => state.setCategoryEditFormOpen)
   const category = useLiveQuery(() => db.categories.get(selectedCategoryId), [selectedCategoryId])
-  const title = selectedCategoryId === uncategorizedCategoryId ? 'Uncategorized' : category?.name ?? 'Category'
-  const canEdit = isEditMode && category && category.id !== uncategorizedCategoryId
+  const title = category?.name ?? ''
+  const canEdit = Boolean(isEditMode && category)
 
   return (
     <>

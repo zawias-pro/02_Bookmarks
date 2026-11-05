@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { LocalCategory } from '../model/model.ts'
-import { canMoveCategory, categoryRows, planCategoryDelete, planCategoryMove } from './tree.ts'
+import { canMoveCategory, categoryRows, chooseDefaultCategory, planCategoryDelete, planCategoryMove } from './tree.ts'
 
 const category = (id: string, parentId: string | null, order: number): LocalCategory => ({
   id,
@@ -90,4 +90,18 @@ test('deleting a nested category keeps its subtree and moves it up one level', (
 
 test('deleting a category without children plans nothing', () => {
   assert.deepEqual(planCategoryDelete([category('a', null, 0)], 'a'), [])
+})
+
+test('the default category is the one already named for it', () => {
+  const categories = [category('a', null, 0), { ...category('named', null, 1), name: 'Unnamed' }]
+  assert.equal(chooseDefaultCategory(categories, 'Unnamed')?.id, 'named')
+})
+
+test('without a named category the first sidebar row is chosen', () => {
+  const categories = [category('b', null, 1), category('a', null, 0), category('a1', 'a', 0)]
+  assert.equal(chooseDefaultCategory(categories, 'Unnamed')?.id, 'a')
+})
+
+test('no default category exists when there is nothing to adopt', () => {
+  assert.equal(chooseDefaultCategory([], 'Unnamed'), undefined)
 })

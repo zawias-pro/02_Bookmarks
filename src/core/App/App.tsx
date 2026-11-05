@@ -9,7 +9,6 @@ import { useAppStore } from '../../store/appStore.ts';
 import { Toaster } from 'sonner';
 import { CategoryHeader } from '../../categories/CategoryHeader/CategoryHeader.tsx';
 import { useRealtimeSync } from '../../sync/useRealtimeSync.ts';
-import { ensureUncategorizedCategory } from '../../sync/sync.ts';
 import styles from './App.module.css'
 
 const App = () => {
@@ -24,10 +23,6 @@ const App = () => {
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
-
-  useEffect(() => {
-    void ensureUncategorizedCategory();
-  }, []);
 
   // The mobile drawer covers the board, so picking a category dismisses it.
   useEffect(() => {

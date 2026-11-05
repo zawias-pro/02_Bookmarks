@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { createBookmark } from '../sync/sync.ts'
-import { uncategorizedCategoryId } from '../model/model.ts'
 import { Modal } from '../components/Modal/Modal.tsx'
 import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
@@ -12,7 +11,7 @@ const AddBookmarkForm = () => {
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
   const selectedCategoryId = useAppStore((state) => state.selectedCategoryId)
-  const [categoryId, setCategoryId] = useState<string | null>(selectedCategoryId === uncategorizedCategoryId ? null : selectedCategoryId)
+  const [categoryId, setCategoryId] = useState(selectedCategoryId)
   const isBookmarkFormOpen = useAppStore((state) => state.isBookmarkFormOpen)
   const setBookmarkFormOpen = useAppStore((state) => state.setBookmarkFormOpen)
 
@@ -27,7 +26,7 @@ const AddBookmarkForm = () => {
     if (navigator.onLine === false) toast.info("You're offline. Saved on this device, will sync on reconnect.")
     setTitle('')
     setLink('')
-    setCategoryId(null)
+    setCategoryId(selectedCategoryId)
     setBookmarkFormOpen(false)
   }
 

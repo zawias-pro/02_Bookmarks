@@ -6,14 +6,12 @@ import { Field } from '../components/Field/Field.tsx'
 import { Button } from '../components/Button/Button.tsx'
 import { db } from '../persistence/database.ts'
 import { deleteCategory, updateCategory } from '../sync/sync.ts'
-import { uncategorizedCategoryId } from '../model/model.ts'
 import { useAppStore } from '../store/appStore.ts'
 
 const EditCategoryForm = () => {
   const selectedCategoryId = useAppStore((state) => state.selectedCategoryId)
   const isOpen = useAppStore((state) => state.isCategoryEditFormOpen)
   const setOpen = useAppStore((state) => state.setCategoryEditFormOpen)
-  const setSelectedCategory = useAppStore((state) => state.setSelectedCategory)
   const category = useLiveQuery(() => db.categories.get(selectedCategoryId), [selectedCategoryId])
   const [name, setName] = useState('')
 
@@ -36,7 +34,7 @@ const EditCategoryForm = () => {
 
   const removeCategory = async () => {
     if (!category) throw new Error('Cannot delete category because no category is selected.')
-    if (!window.confirm(`Delete category "${category.name}"? Its bookmarks will become uncategorized.`)) return
+    if (!window.confirm(`Delete category "${category.name}"?`)) return
     try {
       await deleteCategory(category.id)
     } catch (error) {
@@ -44,7 +42,6 @@ const EditCategoryForm = () => {
     }
     if (navigator.onLine === false) toast.info("You're offline. Deleted on this device, will sync on reconnect.")
     setOpen(false)
-    setSelectedCategory(uncategorizedCategoryId)
   }
 
   if (!isOpen || !category) return null

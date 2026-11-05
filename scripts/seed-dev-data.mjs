@@ -70,7 +70,6 @@ const bookmarks = [
   { title: 'NAS', link: 'http://nas.local/', category: 'homelab', order: 1 },
   { title: 'Proxmox', link: 'https://proxmox.local:8006/', category: 'homelab', order: 2 },
   { title: 'Broken icon host', link: 'https://example.invalid/', category: 'reading', order: 3 },
-  { title: 'Uncategorized example', link: 'https://example.com', category: null, order: 0 },
 ]
 
 // Explicit board slots, including a gap after the second bookmark so the grid must not compact.
@@ -108,7 +107,7 @@ const seed = async () => {
       title: bookmark.title,
       link: bookmark.link,
       order: bookmark.order,
-      category: bookmark.category ? categoryIds.get(bookmark.category) : '',
+      category: categoryIds.get(bookmark.category),
       iconSource: 'auto',
       user: record.id,
     }, token))

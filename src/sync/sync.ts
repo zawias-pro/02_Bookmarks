@@ -3,7 +3,6 @@ import { db, createId } from '../persistence/database.ts';
 import { pb } from '../persistence/pocketbase.ts';
 import { categoryRows, descendantsOf, planCategoryDelete, planCategoryMove } from '../categories/tree.ts';
 import { dataUrlToFile, resolveFavicon } from '../icons/favicon.ts';
-import { uncategorizedCategoryId, uncategorizedCategoryName } from '../model/model.ts';
 import type { IconSource, LocalBookmark, LocalCategory, OutboxMutation } from '../model/model.ts';
 
 type RemoteCategory = RecordModel & Pick<LocalCategory, 'name' | 'order'> & { positions?: Record<string, number>; parent?: string };
@@ -14,6 +13,8 @@ export type IconReloadProgress = { done: number; total: number; reloaded: number
 
 const collectionFor = (collection: Collection) => pb.collection<RemoteBookmark | RemoteCategory>(collection);
 const isNotFound = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
+// PocketBase refuses a category delete with 400 while any bookmark still points at it.
+const isRefusedDelete = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && error.status === 400;
 const userId = () => {
   if (!pb.authStore.isValid || !pb.authStore.record) throw new Error('Sign in to PocketBase before syncing.');
   return pb.authStore.record.id;
@@ -29,8 +30,7 @@ const faviconUrl = (bookmark: RemoteBookmark) => {
   return pb.files.getURL(bookmark, bookmark.favicon);
 };
 
-const remoteCategoryId = async (categoryId: string | null) => {
-  if (categoryId === null) return '';
+const remoteCategoryId = async (categoryId: string) => {
   const category = await db.categories.get(categoryId);
   if (!category) throw new Error(`Cannot sync bookmark because category ${categoryId} does not exist locally.`);
   if (!category.remoteId) throw new Error(`Cannot sync bookmark because category "${category.name}" has not synced yet.`);
@@ -94,7 +94,6 @@ const enqueue = async (mutation: Omit<OutboxMutation, 'id' | 'createdAt'>) => {
 const createCategory = async (name: string) => {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Category name cannot be empty.');
-  if (trimmed === uncategorizedCategoryName) throw new Error('That category name is reserved.');
   const id = createId();
   await db.transaction('rw', db.categories, db.outbox, async () => {
     const now = new Date().toISOString();
@@ -117,7 +116,6 @@ const createCategory = async (name: string) => {
 const updateCategory = async (id: string, name: string) => {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Category name cannot be empty.');
-  if (trimmed === uncategorizedCategoryName) throw new Error('That category name is reserved.');
   await db.transaction('rw', db.categories, db.outbox, async () => {
     const category = await db.categories.get(id);
     if (!category) throw new Error('Cannot update category because it does not exist locally.');
@@ -133,14 +131,12 @@ const deleteCategory = async (id: string) => {
     const categories = await db.categories.toArray();
     const category = categories.find((item) => item.id === id);
     if (!category) throw new Error('Cannot delete category because it does not exist locally.');
-    // Sub-categories survive their parent: they take its place among its siblings.
-    const moves = planCategoryDelete(categories, id);
-    for (const bookmark of await db.bookmarks.where('categoryId').equals(id).toArray()) {
-      const updated = { ...bookmark, categoryId: null, updatedAt: new Date().toISOString() };
-      await db.bookmarks.put(updated);
-      await enqueue({ collection: 'bookmarks', operation: bookmark.remoteId ? 'update' : 'create', entityId: bookmark.id, remoteId: bookmark.remoteId, baseRemoteUpdatedAt: bookmark.remoteId ? bookmark.updatedAt : undefined, snapshot: updated });
+    if (categories.length === 1) throw new Error('The last category cannot be deleted.');
+    if (await db.bookmarks.where('categoryId').equals(id).count() > 0) {
+      throw new Error('A category that still has bookmarks cannot be deleted. Move or delete them first.');
     }
-    for (const move of moves) {
+    // Sub-categories survive their parent: they take its place among its siblings.
+    for (const move of planCategoryDelete(categories, id)) {
       const child = categories.find((item) => item.id === move.id);
       if (!child) throw new Error(`Cannot delete category because its child ${move.id} does not exist locally.`);
       const updated = { ...child, ...move, updatedAt: new Date().toISOString() };
@@ -154,9 +150,8 @@ const deleteCategory = async (id: string) => {
 };
 
 const moveCategory = async (id: string, parentId: string | null, index: number) => {
-  if (id === uncategorizedCategoryId) throw new Error('The uncategorized board cannot be moved.');
   await db.transaction('rw', db.categories, db.outbox, async () => {
-    const categories = (await db.categories.toArray()).filter((category) => category.id !== uncategorizedCategoryId);
+    const categories = await db.categories.toArray();
     const now = new Date().toISOString();
     for (const move of planCategoryMove(categories, id, parentId, index)) {
       const category = categories.find((item) => item.id === move.id);
@@ -169,40 +164,13 @@ const moveCategory = async (id: string, parentId: string | null, index: number) 
   void syncNow();
 };
 
-const createUncategorizedCategory = async () => {
-  const now = new Date().toISOString();
-  const positions: Record<string, number> = {};
-  for (const bookmark of await db.bookmarks.toArray()) {
-    if (bookmark.categoryId === null) positions[bookmark.id] = bookmark.order;
-  }
-  const category: LocalCategory = { id: uncategorizedCategoryId, name: uncategorizedCategoryName, parentId: null, order: 0, createdAt: now, updatedAt: now, positions };
-  await db.transaction('rw', db.categories, db.outbox, async () => {
-    await db.categories.add(category);
-    await enqueue({ collection: 'categories', operation: 'create', entityId: category.id, snapshot: category });
-  });
-  void syncNow();
-  return category.id;
-};
-
-let ensuringUncategorized: Promise<string> | undefined;
-const ensureUncategorizedCategory = () => {
-  ensuringUncategorized ??= (async () => {
-    const existing = await db.categories.get(uncategorizedCategoryId);
-    return existing ? existing.id : await createUncategorizedCategory();
-  })().finally(() => { ensuringUncategorized = undefined; });
-  return ensuringUncategorized;
-};
-
 const moveCategoryBookmark = async (categoryId: string, bookmarkId: string, slot: number, layout: Record<string, number>) => {
   if (!Number.isInteger(slot) || slot < 1) throw new Error('Bookmark slot must be a positive integer.');
   await db.transaction('rw', db.categories, db.bookmarks, db.outbox, async () => {
     const category = await db.categories.get(categoryId);
     if (!category) throw new Error('Cannot move bookmark because its category does not exist locally.');
     const entries = Object.entries(category.positions ?? {});
-    const onBoard = (bookmark: LocalBookmark) => categoryId === uncategorizedCategoryId
-      ? bookmark.categoryId === null
-      : bookmark.categoryId === categoryId;
-    const live = (await db.bookmarks.bulkGet(entries.map(([id]) => id))).flatMap((bookmark) => bookmark && onBoard(bookmark) ? [bookmark.id] : []);
+    const live = (await db.bookmarks.bulkGet(entries.map(([id]) => id))).flatMap((bookmark) => bookmark && bookmark.categoryId === categoryId ? [bookmark.id] : []);
     const positions = Object.fromEntries(entries.filter(([id]) => live.includes(id)));
     // Persist the layout that is on screen so untouched bookmarks keep their slot.
     const merged = { ...positions, ...layout, [bookmarkId]: slot };
@@ -222,10 +190,11 @@ const saveBookmarkIcon = async (bookmark: LocalBookmark, favicon: string, iconSo
   });
 };
 
-const createBookmark = async (input: { title: string; link: string; categoryId: string | null }) => {
+const createBookmark = async (input: { title: string; link: string; categoryId: string }) => {
   const title = input.title.trim();
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
+  if (!input.categoryId) throw new Error('Create a category before adding a bookmark.');
   const favicon = navigator.onLine === false ? undefined : await resolveFavicon(link);
   const id = createId();
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
@@ -284,10 +253,11 @@ const reloadFavicons = async (onProgress?: (progress: IconReloadProgress) => voi
   return { reloaded, skipped };
 };
 
-const updateBookmark = async (id: string, input: { title: string; link: string; categoryId: string | null }) => {
+const updateBookmark = async (id: string, input: { title: string; link: string; categoryId: string }) => {
   const title = input.title.trim();
   const link = input.link.trim();
   if (!title || !link) throw new Error('Bookmark title and URL cannot be empty.');
+  if (!input.categoryId) throw new Error('A bookmark must belong to a category.');
   await db.transaction('rw', db.bookmarks, db.outbox, async () => {
     const bookmark = await db.bookmarks.get(id);
     if (!bookmark) throw new Error('Cannot update bookmark because it does not exist locally.');
@@ -310,9 +280,7 @@ const deleteBookmark = async (id: string) => {
 
 const createRemote = async (mutation: OutboxMutation, snapshot: LocalBookmark | LocalCategory) => {
   if (mutation.collection === 'categories') {
-    const category = snapshot as LocalCategory;
-    const identity = category.id === uncategorizedCategoryId ? { id: category.id } : {};
-    return collectionFor(mutation.collection).create({ ...await categoryFormData(category), ...identity, user: userId() });
+    return collectionFor(mutation.collection).create({ ...await categoryFormData(snapshot as LocalCategory), user: userId() });
   }
   const bookmark = snapshot as LocalBookmark;
   return collectionFor(mutation.collection).create(await bookmarkFormData(bookmark, userId()));
@@ -334,14 +302,7 @@ const conflictCopy = async (mutation: OutboxMutation, remote: RemoteBookmark | R
 
 const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice) => void) => {
   if (mutation.operation === 'create') {
-    let remote: RemoteBookmark | RemoteCategory;
-    try {
-      remote = await createRemote(mutation, mutation.snapshot);
-    } catch (error) {
-      // Another device already created the fixed-id uncategorized board.
-      if (mutation.entityId !== uncategorizedCategoryId) throw error;
-      remote = await collectionFor('categories').getOne(uncategorizedCategoryId);
-    }
+    const remote = await createRemote(mutation, mutation.snapshot);
     const remoteFavicon = mutation.collection === 'bookmarks' ? faviconUrl(remote as RemoteBookmark) : undefined;
     if (mutation.collection === 'bookmarks' && (mutation.snapshot as LocalBookmark).favicon?.startsWith('data:') && (!remoteFavicon || remoteFavicon.startsWith('data:'))) {
       throw new Error('PocketBase did not store the bookmark icon as a file.');
@@ -362,7 +323,18 @@ const processMutation = async (mutation: OutboxMutation, notice: (notice: Notice
     throw error;
   }
   if (remote.updated !== mutation.baseRemoteUpdatedAt) { await conflictCopy(mutation, remote, notice); return; }
-  if (mutation.operation === 'delete') await collectionFor(mutation.collection).delete(mutation.remoteId!);
+  if (mutation.operation === 'delete') {
+    try {
+      await collectionFor(mutation.collection).delete(mutation.remoteId!);
+    } catch (error) {
+      if (mutation.collection !== 'categories' || !isRefusedDelete(error)) throw error;
+      // Another device gave this category bookmarks, so the server keeps it. Dropping the mutation
+      // lets the pull that follows restore the category instead of blocking sync forever.
+      await db.outbox.delete(mutation.id);
+      notice({ kind: 'info', message: `Category "${(mutation.snapshot as LocalCategory).name}" still holds bookmarks on another device and was restored.` });
+      return;
+    }
+  }
   const updatedRemote = mutation.operation === 'delete' ? undefined : await collectionFor(mutation.collection).update(mutation.remoteId!, mutation.collection === 'bookmarks'
     ? await bookmarkFormData(mutation.snapshot as LocalBookmark)
     : await categoryFormData(mutation.snapshot as LocalCategory));
@@ -397,7 +369,7 @@ const pull = async () => {
     const local = await localByRemote('categories', remote.id);
     const categoryId = local?.id ?? remote.id;
     if (local) await db.categories.update(local.id, { name: remote.name, order: remote.order, updatedAt: remote.updated });
-    else await db.categories.put({ id: remote.id, remoteId: remote.id, name: remote.name, parentId: null, order: remote.order, createdAt: remote.created, updatedAt: remote.updated });
+    else await db.categories.put({ id: categoryId, remoteId: remote.id, name: remote.name, parentId: null, order: remote.order, createdAt: remote.created, updatedAt: remote.updated });
     if (remote.parent) remoteParents.push({ categoryId, parentRemoteId: remote.parent });
     remotePositionMaps.push({ categoryId, positions: remote.positions ?? {} });
   }
@@ -413,12 +385,14 @@ const pull = async () => {
   }
   for (const remote of remoteBookmarks) {
     if (pendingRemoteIds.has(remote.id)) continue;
-    const category = remote.category ? await localByRemote('categories', remote.category) : undefined;
+    if (!remote.category) throw new Error(`Bookmark "${remote.title}" has no category on the server.`);
+    const category = await localByRemote('categories', remote.category);
+    if (!category) throw new Error(`Cannot import bookmark "${remote.title}" because its category is missing.`);
     const local = await localByRemote('bookmarks', remote.id);
     const existingFavicon = local && 'favicon' in local ? local.favicon : undefined;
     const favicon = faviconUrl(remote);
     const iconSource: IconSource = remote.iconSource === 'custom' ? 'custom' : 'auto';
-    const value = { title: remote.title, link: remote.link, favicon: favicon ?? existingFavicon, iconSource, order: remote.order, categoryId: category?.id ?? null, updatedAt: remote.updated };
+    const value = { title: remote.title, link: remote.link, favicon: favicon ?? existingFavicon, iconSource, order: remote.order, categoryId: category.id, updatedAt: remote.updated };
     if (local) await db.bookmarks.update(local.id, value);
     else await db.bookmarks.put({ id: remote.id, remoteId: remote.id, ...value });
   }
@@ -426,9 +400,9 @@ const pull = async () => {
   for (const local of await db.categories.toArray()) {
     if (!local.remoteId || pendingRemoteIds.has(local.remoteId) || remoteCategoryIds.has(local.remoteId)) continue;
     await db.transaction('rw', db.categories, db.bookmarks, async () => {
-      await db.bookmarks.where('categoryId').equals(local.id).modify((bookmark) => {
-        bookmark.categoryId = null;
-      });
+      if (await db.bookmarks.where('categoryId').equals(local.id).count() > 0) {
+        throw new Error(`Cannot remove category "${local.name}" because bookmarks still point to it.`);
+      }
       await db.categories.delete(local.id);
     });
   }
@@ -440,18 +414,15 @@ const pull = async () => {
     if (bookmark.remoteId) bookmarkByKey.set(bookmark.remoteId, bookmark);
   }
   for (const entry of remotePositionMaps) {
-    const onBoard = (bookmark: LocalBookmark) => entry.categoryId === uncategorizedCategoryId
-      ? bookmark.categoryId === null
-      : bookmark.categoryId === entry.categoryId;
     const local = await db.categories.get(entry.categoryId);
     // Keep local slots the remote map cannot express (a bookmark that had no remote id when the map was pushed).
     const kept = Object.entries(local?.positions ?? {}).flatMap(([id, slot]) => {
       const bookmark = bookmarkByKey.get(id);
-      return bookmark && onBoard(bookmark) ? [[id, slot] as [string, number]] : [];
+      return bookmark && bookmark.categoryId === entry.categoryId ? [[id, slot] as [string, number]] : [];
     });
     const translated = Object.entries(entry.positions).flatMap(([key, slot]) => {
       const bookmark = bookmarkByKey.get(key);
-      return bookmark && onBoard(bookmark) ? [[bookmark.id, slot] as [string, number]] : [];
+      return bookmark && bookmark.categoryId === entry.categoryId ? [[bookmark.id, slot] as [string, number]] : [];
     });
     await db.categories.update(entry.categoryId, { positions: { ...Object.fromEntries(kept), ...Object.fromEntries(translated) } });
   }
@@ -499,4 +470,4 @@ const syncNow = () => {
   return activeSync;
 };
 
-export { createBookmark, createCategory, deleteBookmark, deleteCategory, ensureUncategorizedCategory, moveCategory, moveCategoryBookmark, refreshBookmarkIcon, reloadFavicons, setBookmarkIcon, syncNow, updateBookmark, updateCategory };
+export { createBookmark, createCategory, deleteBookmark, deleteCategory, moveCategory, moveCategoryBookmark, refreshBookmarkIcon, reloadFavicons, setBookmarkIcon, syncNow, updateBookmark, updateCategory };

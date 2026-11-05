@@ -9,7 +9,7 @@ export interface LocalBookmark {
   favicon?: string;
   iconSource?: IconSource;
   order: number;
-  categoryId: string | null;
+  categoryId: string;
   updatedAt: string;
 }
 
@@ -42,10 +42,3 @@ export interface OutboxMutation {
   snapshot: LocalBookmark | LocalCategory;
   createdAt: string;
 }
-
-// The uncategorized board is a real, hidden category record so it syncs like any other board.
-// Its id is kept from the former untagged tag so existing remote rows need no rewrite.
-const uncategorizedCategoryId = 'untaggedtag0000';
-const uncategorizedCategoryName = '_uncategorized';
-
-export { uncategorizedCategoryId, uncategorizedCategoryName };

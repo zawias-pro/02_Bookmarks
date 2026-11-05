@@ -90,7 +90,7 @@
         "id": "field_category",
         "name": "category",
         "type": "relation",
-        "required": false,
+        "required": true,
         "presentable": false,
         "unique": false,
         "options": {

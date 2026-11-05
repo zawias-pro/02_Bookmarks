@@ -19,12 +19,12 @@ const EditBookmarkForm = () => {
   )
   const [title, setTitle] = useState('')
   const [link, setLink] = useState('')
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState('')
 
   useEffect(() => {
     setTitle(bookmark?.title ?? '')
     setLink(bookmark?.link ?? '')
-    setCategoryId(bookmark?.categoryId ?? null)
+    setCategoryId(bookmark?.categoryId ?? '')
   }, [bookmark])
 
   const updateBookmarkEntry = async (event: FormEvent<HTMLFormElement>) => {

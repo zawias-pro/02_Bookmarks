@@ -8,7 +8,7 @@ const bookmark = (id: string, order: number): LocalBookmark => ({
   title: id,
   link: 'https://example.com',
   order,
-  categoryId: null,
+  categoryId: 'category',
   updatedAt: '2026-01-01T00:00:00.000Z',
 })
 
