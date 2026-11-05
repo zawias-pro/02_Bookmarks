@@ -75,4 +75,13 @@
     z-index: 10;
     background: rgb(0 0 0 / 0.35);
   }
+
+  /* A dialog is a full-screen overlay too: the drawer steps aside instead of fighting it. */
+  body:has([aria-modal="true"]) .app[data-sidebar-open="true"] > .sidebar {
+    transform: translateX(-100%);
+  }
+
+  body:has([aria-modal="true"]) .app > .backdrop {
+    display: none;
+  }
 }

@@ -5,7 +5,7 @@
   place-items: center;
   padding: 1.25rem;
   background: var(--color-backdrop);
-  z-index: 10;
+  z-index: 30;
 }
 
 .dialog {
